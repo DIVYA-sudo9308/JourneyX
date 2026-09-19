@@ -1,0 +1,20 @@
+{
+  "brand": "JourneyX",
+  "concept": "Convergent Thread",
+  "primary": "#0B1220",
+  "secondary": "#344054",
+  "accent": "#10B7A5",
+  "background": "#F7F8FA",
+  "surface": "#FFFFFF",
+  "elevated_surface": "#FFFFFF",
+  "border": "#D9DEE7",
+  "primary_text": "#0B1220",
+  "secondary_text": "#667085",
+  "success": "#18794E",
+  "warning": "#B54708",
+  "error": "#B42318",
+  "info": "#175CD3",
+  "typeface_primary": "Geist",
+  "typeface_data": "IBM Plex Mono",
+  "tagline": "See the journey behind every interaction."
+}

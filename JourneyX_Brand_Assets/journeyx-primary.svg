@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="360" viewBox="0 0 1180 360">
+      <rect width="1180" height="360" fill="#FFFFFF"/>
+      
+      <g transform="translate(70,155)">
+        <path d="M90 45 C145 45 170 78 222 110 C258 132 282 145 340 145" fill="none"
+              stroke="#344054" stroke-width="34" stroke-linecap="round"/>
+        <path d="M90 145 C145 145 170 145 218 145 C265 145 292 120 340 78" fill="none"
+              stroke="#10B7A5" stroke-width="34" stroke-linecap="round"/>
+        <path d="M90 245 C145 245 175 212 222 180 C260 155 286 145 340 145" fill="none"
+              stroke="#344054" stroke-width="34" stroke-linecap="round"/>
+        <circle cx="340" cy="145" r="23" fill="#10B7A5"/>
+      </g>
+    
+      <text x="485" y="245" text-anchor="start"
+            font-family="Geist, Inter, Arial, sans-serif"
+            font-size="86" font-weight="650" letter-spacing="-2.8"
+            fill="#0B1220">JourneyX</text>
+    </svg>

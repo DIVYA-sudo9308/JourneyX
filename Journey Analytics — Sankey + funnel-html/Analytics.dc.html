@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JourneyX — Journey Analytics</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+body{margin:0;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#E6EAF3;background:#0A0E17;-webkit-font-smoothing:antialiased}
+a{color:#8AA7FF;text-decoration:none}a:hover{color:#B3C4FF}
+</style>
+</helmet>
+
+<div style="width:1440px;height:900px;background:#0A0E17;color:#E6EAF3;font-family:'IBM Plex Sans',system-ui,sans-serif;display:flex;overflow:hidden">
+
+<!-- Rail 56 -->
+<div style="width:56px;height:900px;background:#0A0E17;border-right:1px solid #1B2233;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;flex-shrink:0">
+  <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(140deg,#4F7CFF,#22D3B0);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0E17" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l4-12 4 8 4-6 4 10"></path></svg>
+  </div>
+  <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6B7488"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg></div>
+  <div style="width:36px;height:36px;border-radius:8px;background:#171E2B;display:flex;align-items:center;justify-content:center;color:#8AA7FF;border:1px solid #2A3547"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></div>
+  <div style="flex-grow:1"></div>
+  <div style="width:32px;height:32px;border-radius:50%;background:#1E2636;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#8AA7FF;border:1px solid #2A3547">KP</div>
+</div>
+
+<!-- Content 1384 -->
+<div style="width:1384px;height:900px;display:flex;flex-direction:column;flex-shrink:0">
+
+  <!-- Top -->
+  <div style="height:60px;border-bottom:1px solid #1B2233;padding:0 24px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+    <div>
+      <div style="font-size:18px;font-weight:600;letter-spacing:-0.01em">Journey analytics</div>
+      <div style="font-size:11px;color:#6B7488">All customers · 30 days · rolling</div>
+    </div>
+    <div style="flex-grow:1"></div>
+    <div style="display:flex;gap:6px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+      <span style="padding:5px 10px;color:#6B7488">7d</span>
+      <span style="padding:5px 10px;background:#171E2B;border:1px solid #2A3547;color:#E6EAF3;border-radius:5px">30d</span>
+      <span style="padding:5px 10px;color:#6B7488">90d</span>
+      <span style="padding:5px 10px;color:#6B7488">Custom</span>
+    </div>
+    <div style="width:1px;height:24px;background:#1B2233"></div>
+    <button style="padding:6px 12px;background:transparent;border:1px solid #2A3547;border-radius:6px;color:#A0AABF;font-size:12px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+      Segment: all
+    </button>
+    <button style="padding:6px 12px;background:transparent;border:1px solid #2A3547;border-radius:6px;color:#A0AABF;font-size:12px;font-family:inherit;cursor:pointer">Compare vs prior 30d</button>
+  </div>
+
+  <!-- KPI row -->
+  <div style="padding:16px 24px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;flex-shrink:0">
+    <div style="padding:12px 14px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+      <div style="font-size:10px;color:#A0AABF;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Completion rate</div>
+      <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">72.4%</div><div style="font-size:11px;color:#77C46B">↑ 1.8%</div></div>
+    </div>
+    <div style="padding:12px 14px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+      <div style="font-size:10px;color:#A0AABF;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Avg duration</div>
+      <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">2d 14h</div><div style="font-size:11px;color:#EF7A8F">↑ 8m</div></div>
+    </div>
+    <div style="padding:12px 14px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+      <div style="font-size:10px;color:#A0AABF;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Channel switches</div>
+      <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">3.2</div><div style="font-size:11px;color:#A0AABF">per journey</div></div>
+    </div>
+    <div style="padding:12px 14px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+      <div style="font-size:10px;color:#A0AABF;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Repeat contacts</div>
+      <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">14.7%</div><div style="font-size:11px;color:#77C46B">↓ 0.6%</div></div>
+    </div>
+    <div style="padding:12px 14px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+      <div style="font-size:10px;color:#A0AABF;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Churn signal rate</div>
+      <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">4.1%</div><div style="font-size:11px;color:#EF7A8F">↑ 0.3%</div></div>
+    </div>
+  </div>
+
+  <!-- Body 2 col -->
+  <div style="padding:0 24px 20px;display:grid;grid-template-columns:1.55fr 1fr;gap:12px;flex-grow:1;overflow:hidden">
+
+    <!-- Sankey channel transitions -->
+    <div style="padding:14px 16px;background:#10151F;border:1px solid #232C3D;border-radius:8px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div style="font-size:13px;font-weight:600">Channel transitions</div>
+          <div style="font-size:11px;color:#6B7488;margin-top:1px">Where journeys switch channels · 30d · thicker = more journeys</div>
+        </div>
+        <div style="font-size:11px;color:#A0AABF;font-family:'IBM Plex Mono',monospace">14,238 journeys</div>
+      </div>
+
+      <svg viewBox="0 0 800 460" width="100%" height="100%" style="display:block;flex-grow:1">
+        <!-- Column headers -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#6B7488">
+          <text x="60" y="20" text-anchor="middle">ENTRY</text>
+          <text x="300" y="20" text-anchor="middle">→ NEXT</text>
+          <text x="540" y="20" text-anchor="middle">→ NEXT</text>
+          <text x="740" y="20" text-anchor="middle">OUTCOME</text>
+        </g>
+
+        <!-- Flows (curves) — order: draw thick flows first (background) -->
+        <g fill="none" opacity="0.55">
+          <!-- Web → Web → Web → Completed (big) -->
+          <path d="M100,60 C200,60 200,60 260,60 L340,60 C440,60 440,60 500,60 L580,60 C680,60 680,60 700,80" stroke="#4F7CFF" stroke-width="42"></path>
+          <!-- Web → Mobile → Web → Completed -->
+          <path d="M100,110 C200,110 200,150 260,150 L340,150 C440,150 440,100 500,100 L580,100 C680,100 680,100 700,120" stroke="#4F7CFF" stroke-width="18" opacity="0.5"></path>
+          <!-- Email → Web → Web → Completed -->
+          <path d="M100,200 C200,200 200,80 260,80 L340,80 C440,80 440,80 500,80 L580,80 C680,80 680,80 700,100" stroke="#F5A524" stroke-width="14" opacity="0.5"></path>
+          <!-- Mobile → Mobile → Chat → Abandoned -->
+          <path d="M100,260 C200,260 200,220 260,220 L340,220 C440,220 440,240 500,240 L580,240 C680,240 680,260 700,280" stroke="#22D3B0" stroke-width="16" opacity="0.5"></path>
+          <!-- Web → Chat → Call → Escalated -->
+          <path d="M100,150 C200,150 200,290 260,290 L340,290 C440,290 440,340 500,340 L580,340 C680,340 680,360 700,360" stroke="#A855F7" stroke-width="10" opacity="0.55"></path>
+          <!-- Mobile → Web → Call → Escalated -->
+          <path d="M100,320 C200,320 200,140 260,140 L340,140 C440,140 440,340 500,340 L580,340 C680,340 680,360 700,360" stroke="#DC2E5F" stroke-width="8" opacity="0.45"></path>
+          <!-- Email → Email → Abandoned -->
+          <path d="M100,240 C200,240 200,200 260,200 L340,200 C440,200 440,270 500,270 L580,270 C680,270 680,270 700,280" stroke="#F5A524" stroke-width="8" opacity="0.4"></path>
+          <!-- Call → Call → Escalated -->
+          <path d="M100,380 C200,380 200,340 260,340 L340,340 C440,340 440,340 500,340 L580,340 C680,340 680,340 700,360" stroke="#DC2E5F" stroke-width="10" opacity="0.5"></path>
+        </g>
+
+        <!-- Nodes columns -->
+        <!-- Col 1: entry -->
+        <g>
+          <rect x="90" y="40" width="20" height="60" fill="#4F7CFF" rx="2"></rect>
+          <text x="82" y="72" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3" font-weight="500">Web</text>
+          <text x="82" y="84" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">6,412 · 45%</text>
+
+          <rect x="90" y="130" width="20" height="30" fill="#4F7CFF" rx="2" opacity="0.8"></rect>
+          <text x="82" y="145" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Web (paid)</text>
+          <text x="82" y="157" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">1,842 · 12%</text>
+
+          <rect x="90" y="185" width="20" height="34" fill="#F5A524" rx="2"></rect>
+          <text x="82" y="200" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Email</text>
+          <text x="82" y="212" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">2,110 · 15%</text>
+
+          <rect x="90" y="240" width="20" height="46" fill="#22D3B0" rx="2"></rect>
+          <text x="82" y="265" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Mobile</text>
+          <text x="82" y="277" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">2,912 · 20%</text>
+
+          <rect x="90" y="305" width="20" height="34" fill="#22D3B0" rx="2" opacity="0.8"></rect>
+          <text x="82" y="325" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Mobile (org.)</text>
+          <text x="82" y="337" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">544 · 4%</text>
+
+          <rect x="90" y="360" width="20" height="34" fill="#DC2E5F" rx="2"></rect>
+          <text x="82" y="380" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Call</text>
+          <text x="82" y="392" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">418 · 4%</text>
+        </g>
+
+        <!-- Col 2 -->
+        <g>
+          <rect x="255" y="40" width="20" height="60" fill="#4F7CFF" rx="2"></rect>
+          <text x="285" y="72" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Web</text>
+          <text x="285" y="84" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">7,120</text>
+
+          <rect x="255" y="120" width="20" height="46" fill="#22D3B0" rx="2"></rect>
+          <text x="285" y="145" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Mobile</text>
+
+          <rect x="255" y="185" width="20" height="30" fill="#F5A524" rx="2"></rect>
+          <text x="285" y="205" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Email</text>
+
+          <rect x="255" y="270" width="20" height="40" fill="#A855F7" rx="2"></rect>
+          <text x="285" y="295" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Chat</text>
+
+          <rect x="255" y="325" width="20" height="30" fill="#DC2E5F" rx="2"></rect>
+          <text x="285" y="345" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Call</text>
+        </g>
+
+        <!-- Col 3 -->
+        <g>
+          <rect x="495" y="40" width="20" height="60" fill="#4F7CFF" rx="2"></rect>
+          <text x="525" y="72" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Web</text>
+
+          <rect x="495" y="115" width="20" height="40" fill="#22D3B0" rx="2"></rect>
+          <text x="525" y="140" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Mobile</text>
+
+          <rect x="495" y="220" width="20" height="40" fill="#F5A524" rx="2"></rect>
+          <text x="525" y="245" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Email</text>
+
+          <rect x="495" y="320" width="20" height="50" fill="#DC2E5F" rx="2"></rect>
+          <text x="525" y="350" font-family="IBM Plex Sans" font-size="11" fill="#E6EAF3">Call</text>
+        </g>
+
+        <!-- Col 4: outcomes -->
+        <g>
+          <rect x="695" y="55" width="20" height="60" fill="#22C55E" rx="2"></rect>
+          <text x="722" y="80" font-family="IBM Plex Sans" font-size="11" fill="#77C46B" font-weight="500">Completed</text>
+          <text x="722" y="94" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">10,308 · 72%</text>
+
+          <rect x="695" y="265" width="20" height="30" fill="#F5A524" rx="2"></rect>
+          <text x="722" y="285" font-family="IBM Plex Sans" font-size="11" fill="#F5B563" font-weight="500">Abandoned</text>
+          <text x="722" y="299" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">2,368 · 17%</text>
+
+          <rect x="695" y="345" width="20" height="30" fill="#EF4E4E" rx="2"></rect>
+          <text x="722" y="365" font-family="IBM Plex Sans" font-size="11" fill="#EF7A8F" font-weight="500">Escalated</text>
+          <text x="722" y="379" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6B7488">1,562 · 11%</text>
+        </g>
+
+        <!-- Time axis label -->
+        <g font-family="IBM Plex Mono, monospace" font-size="9" fill="#3A4560">
+          <line x1="60" y1="430" x2="740" y2="430" stroke="#232C3D"></line>
+          <text x="60" y="447">t=0</text>
+          <text x="740" y="447" text-anchor="end">t=resolution</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Right column: Funnel + Friction hotspots -->
+    <div style="display:flex;flex-direction:column;gap:12px;overflow:hidden">
+      <!-- Funnel -->
+      <div style="padding:14px 16px;background:#10151F;border:1px solid #232C3D;border-radius:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600">Journey funnel</div>
+          <div style="font-size:11px;color:#6B7488">standard e-commerce</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF">Awareness</div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:100%;background:linear-gradient(90deg,#4F7CFF,#4F7CFF);height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#fff;font-weight:500;font-family:'IBM Plex Mono',monospace">42,180</div></div>
+            <div style="width:36px;font-size:10px;color:#6B7488;font-family:'IBM Plex Mono',monospace;text-align:right">100%</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF">Interest</div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:64%;background:#4F7CFF;height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#fff;font-weight:500;font-family:'IBM Plex Mono',monospace">26,996</div></div>
+            <div style="width:36px;font-size:10px;color:#6B7488;font-family:'IBM Plex Mono',monospace;text-align:right">64%</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF">Consider</div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:48%;background:#22D3B0;height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#0A0E17;font-weight:600;font-family:'IBM Plex Mono',monospace">20,246</div></div>
+            <div style="width:36px;font-size:10px;color:#6B7488;font-family:'IBM Plex Mono',monospace;text-align:right">48%</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF">Checkout</div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:34%;background:#F5A524;height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#0A0E17;font-weight:600;font-family:'IBM Plex Mono',monospace">14,341</div></div>
+            <div style="width:36px;font-size:10px;color:#6B7488;font-family:'IBM Plex Mono',monospace;text-align:right">34%</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF;position:relative">Purchase<span style="position:absolute;right:0;top:2px;width:5px;height:5px;background:#EF4E4E;border-radius:50%" title="drop-off"></span></div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:24%;background:#22C55E;height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#0A0E17;font-weight:600;font-family:'IBM Plex Mono',monospace">10,308</div></div>
+            <div style="width:36px;font-size:10px;color:#77C46B;font-family:'IBM Plex Mono',monospace;text-align:right">24%</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:70px;font-size:11px;color:#A0AABF">Retention</div>
+            <div style="flex-grow:1;height:22px;background:#171E2B;border-radius:3px;overflow:hidden;display:flex"><div style="width:18%;background:#22C55E;height:100%;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#0A0E17;font-weight:600;font-family:'IBM Plex Mono',monospace">7,568</div></div>
+            <div style="width:36px;font-size:10px;color:#6B7488;font-family:'IBM Plex Mono',monospace;text-align:right">18%</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 10px;background:#0D1220;border-left:2px solid #F5A524;border-radius:0 4px 4px 0;font-size:11px;color:#A0AABF">
+          <span style="color:#F5B563;font-weight:500">Biggest drop-off:</span> Checkout → Purchase (−29%) · driven by <span style="color:#E6EAF3">fraud rule fires (11%)</span> and <span style="color:#E6EAF3">payment declines (7%)</span>
+        </div>
+      </div>
+
+      <!-- Friction hotspots -->
+      <div style="padding:14px 16px;background:#10151F;border:1px solid #232C3D;border-radius:8px;flex-grow:1;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600">Friction hotspots</div>
+          <div style="font-size:11px;color:#6B7488">ranked by journeys affected</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#4F7CFF;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">W</span>Payment step · fraud rule 02</span>
+              <span style="color:#EF7A8F;font-family:'IBM Plex Mono',monospace">2,412 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:92%;height:100%;background:linear-gradient(90deg,#EF4E4E,#F5A524)"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#22D3B0;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">M</span>KYC step 3 · document upload</span>
+              <span style="color:#F5B563;font-family:'IBM Plex Mono',monospace">1,842 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:70%;height:100%;background:#F5A524"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#A855F7;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">C</span>Chat handoff · no agent available</span>
+              <span style="color:#F5B563;font-family:'IBM Plex Mono',monospace">1,204 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:46%;height:100%;background:#F5A524"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#F5A524;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">E</span>Email link expired</span>
+              <span style="color:#A0AABF;font-family:'IBM Plex Mono',monospace">712 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:27%;height:100%;background:#F5A524"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#DC2E5F;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">V</span>Call queue &gt; 4m wait</span>
+              <span style="color:#A0AABF;font-family:'IBM Plex Mono',monospace">544 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:21%;height:100%;background:#F5A524"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="display:flex;align-items:center;gap:6px;color:#E6EAF3"><span style="width:14px;height:14px;background:#4F7CFF;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#0A0E17;font-weight:700">W</span>Cart abandonment · payment page</span>
+              <span style="color:#A0AABF;font-family:'IBM Plex Mono',monospace">412 journeys</span>
+            </div>
+            <div style="height:6px;background:#171E2B;border-radius:3px;overflow:hidden"><div style="width:16%;height:100%;background:#F5A524"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
