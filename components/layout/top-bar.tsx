@@ -23,9 +23,11 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4">
       <MobileNav />
-      <h1 className="shrink-0 text-lg font-semibold tracking-[-0.01em] text-foreground">
+      {/* Contextual chrome label, not the page heading — each page's content
+          owns the single <h1> (PageHeader / PagePlaceholder). */}
+      <p className="shrink-0 text-lg font-semibold tracking-[-0.01em] text-foreground">
         {titleFor(pathname)}
-      </h1>
+      </p>
       <div className="ml-2 hidden flex-1 justify-center md:flex">
         <SearchTrigger />
       </div>

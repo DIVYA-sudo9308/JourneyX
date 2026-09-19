@@ -15,9 +15,9 @@ export function PagePlaceholder({
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
       <BrandMark className="h-12 w-12 opacity-90" />
-      <h2 className="text-xl font-semibold tracking-[-0.01em] text-foreground">
+      <h1 className="text-xl font-semibold tracking-[-0.01em] text-foreground">
         {title}
-      </h2>
+      </h1>
       <p className="max-w-md text-sm text-text-secondary">{note}</p>
       <p className="font-mono text-xs text-text-muted">
         Milestone 1 · application shell
