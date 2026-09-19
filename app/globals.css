@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   JourneyX Design Tokens — "Convergent Thread"
+   Authoritative light values come from /JourneyX_Brand_Assets (brand-tokens.json,
+   journeyx-palette.svg). Values marked DERIVED complete the ramp per Design
+   System §3.2 / §44 and are on-hue, AA-checked. Do not change brand anchors.
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* ---- Primitive brand anchors (light) ---- */
+    --jx-ink-900: #0b1220; /* Primary / Ink */
+    --jx-slate-700: #344054; /* Secondary / Slate */
+    --jx-teal-500: #10b7a5; /* Accent / Signal Teal */
+
+    /* ---- Semantic: surfaces & text (light, reference) ---- */
+    --jx-color-bg: #f7f8fa;
+    --jx-color-surface: #ffffff;
+    --jx-color-surface-alt: #f1f3f6; /* DERIVED */
+    --jx-color-elevated: #ffffff;
+    --jx-color-border: #d9dee7;
+    --jx-color-border-strong: #c3cad6; /* DERIVED */
+
+    --jx-color-text: #0b1220;
+    --jx-color-text-secondary: #667085;
+    --jx-color-text-muted: #98a2b3; /* DERIVED */
+
+    /* ---- Semantic: actions ---- */
+    --jx-color-primary: #0b1220; /* Ink = primary action */
+    --jx-color-primary-hover: #1d2739; /* DERIVED */
+    --jx-color-on-primary: #ffffff;
+    --jx-color-secondary: #344054;
+
+    --jx-color-accent: #10b7a5; /* Signal Teal */
+    --jx-color-accent-hover: #0e9e8e; /* DERIVED */
+    --jx-color-accent-tint: #e7f7f4; /* DERIVED */
+    --jx-color-on-accent: #04201d; /* AA on teal */
+
+    /* ---- Semantic: states ---- */
+    --jx-color-success: #18794e;
+    --jx-color-warning: #b54708;
+    --jx-color-error: #b42318;
+    --jx-color-info: #175cd3;
+    --jx-color-success-tint: #e6f3ec; /* DERIVED */
+    --jx-color-warning-tint: #fbf0e6; /* DERIVED */
+    --jx-color-error-tint: #fbecea; /* DERIVED */
+    --jx-color-info-tint: #e8f0fc; /* DERIVED */
+    --jx-color-neutral-tint: #eef1f5; /* DERIVED */
+
+    /* ---- Channel accents (identification only; DERIVED, DS §36) ---- */
+    --jx-channel-web: #2f6fed;
+    --jx-channel-mobile: #0e9e8e;
+    --jx-channel-call-center: #7a5aa6;
+    --jx-channel-email: #175cd3;
+    --jx-channel-chat: #5b7b9a;
+    --jx-channel-in-store: #8a6d3b;
+
+    /* ---- Pattern accents (reuse semantic tokens; DS §38) ---- */
+    --jx-pattern-drop-off: var(--jx-color-error);
+    --jx-pattern-escalation: var(--jx-color-warning);
+    --jx-pattern-repeat: var(--jx-color-warning);
+    --jx-pattern-unresolved: var(--jx-color-info);
+    --jx-pattern-churn: var(--jx-color-error);
+
+    /* ---- Focus ---- */
+    --jx-focus-ring: #10b7a5;
+
+    /* ---- Radius (DS §7) ---- */
+    --jx-radius-xs: 4px;
+    --jx-radius-sm: 6px;
+    --jx-radius-md: 8px;
+    --jx-radius-lg: 10px;
+    --jx-radius-pill: 9999px;
+
+    /* ---- Elevation (DS §8) ---- */
+    --jx-shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06), 0 1px 1px rgba(11, 18, 32, 0.04);
+    --jx-shadow-md: 0 4px 12px rgba(11, 18, 32, 0.08), 0 2px 4px rgba(11, 18, 32, 0.05);
+    --jx-shadow-lg: 0 12px 32px rgba(11, 18, 32, 0.14), 0 4px 8px rgba(11, 18, 32, 0.06);
+
+    /* ---- Spacing (4px grid, DS §5) ---- */
+    --jx-space-1: 4px;
+    --jx-space-2: 8px;
+    --jx-space-3: 12px;
+    --jx-space-4: 16px;
+    --jx-space-5: 20px;
+    --jx-space-6: 24px;
+    --jx-space-8: 32px;
+
+    /* ---- Motion (DS §42) ---- */
+    --jx-dur-1: 100ms;
+    --jx-dur-2: 200ms;
+    --jx-dur-3: 300ms;
+    --jx-dur-4: 500ms;
+    --jx-dur-5: 800ms;
+    --jx-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --jx-ease-inout: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
+  /* ---- Dark theme (DERIVED from Convergent Thread hues; grounded by
+     journeyx-primary-dark.svg: bg Ink #0B1220, neutral fg #D0D5DD, teal held).
+     Applied on explicit toggle OR system preference when not forced light. ---- */
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]) {
+    /* only the media query below narrows the system-preference case */
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --jx-color-bg: #0b1220;
+      --jx-color-surface: #131b2b;
+      --jx-color-surface-alt: #1a2233;
+      --jx-color-elevated: #1f2941;
+      --jx-color-border: #26314a;
+      --jx-color-border-strong: #34405c;
+
+      --jx-color-text: #f2f4f7;
+      --jx-color-text-secondary: #98a2b3;
+      --jx-color-text-muted: #667085;
+
+      --jx-color-primary: #f2f4f7;
+      --jx-color-primary-hover: #ffffff;
+      --jx-color-on-primary: #0b1220;
+      --jx-color-secondary: #98a2b3;
+
+      --jx-color-accent: #2ad0bf;
+      --jx-color-accent-hover: #4fe0d1;
+      --jx-color-accent-tint: #0e2b29;
+      --jx-color-on-accent: #04201d;
+
+      --jx-color-success: #3fbe85;
+      --jx-color-warning: #e8912f;
+      --jx-color-error: #f0776b;
+      --jx-color-info: #6aa0f0;
+      --jx-color-success-tint: #10261c;
+      --jx-color-warning-tint: #2a1d0c;
+      --jx-color-error-tint: #2a1512;
+      --jx-color-info-tint: #0e1b30;
+      --jx-color-neutral-tint: #1a2233;
+
+      --jx-channel-web: #6aa0f0;
+      --jx-channel-mobile: #2ad0bf;
+      --jx-channel-call-center: #b79bdd;
+      --jx-channel-email: #6aa0f0;
+      --jx-channel-chat: #9db4cc;
+      --jx-channel-in-store: #c9a25e;
+
+      --jx-focus-ring: #2ad0bf;
+    }
+  }
+
+  /* Explicit dark toggle wins regardless of system preference. */
+  :root[data-theme="dark"] {
+    --jx-color-bg: #0b1220;
+    --jx-color-surface: #131b2b;
+    --jx-color-surface-alt: #1a2233;
+    --jx-color-elevated: #1f2941;
+    --jx-color-border: #26314a;
+    --jx-color-border-strong: #34405c;
+
+    --jx-color-text: #f2f4f7;
+    --jx-color-text-secondary: #98a2b3;
+    --jx-color-text-muted: #667085;
+
+    --jx-color-primary: #f2f4f7;
+    --jx-color-primary-hover: #ffffff;
+    --jx-color-on-primary: #0b1220;
+    --jx-color-secondary: #98a2b3;
+
+    --jx-color-accent: #2ad0bf;
+    --jx-color-accent-hover: #4fe0d1;
+    --jx-color-accent-tint: #0e2b29;
+    --jx-color-on-accent: #04201d;
+
+    --jx-color-success: #3fbe85;
+    --jx-color-warning: #e8912f;
+    --jx-color-error: #f0776b;
+    --jx-color-info: #6aa0f0;
+    --jx-color-success-tint: #10261c;
+    --jx-color-warning-tint: #2a1d0c;
+    --jx-color-error-tint: #2a1512;
+    --jx-color-info-tint: #0e1b30;
+    --jx-color-neutral-tint: #1a2233;
+
+    --jx-channel-web: #6aa0f0;
+    --jx-channel-mobile: #2ad0bf;
+    --jx-channel-call-center: #b79bdd;
+    --jx-channel-email: #6aa0f0;
+    --jx-channel-chat: #9db4cc;
+    --jx-channel-in-store: #c9a25e;
+
+    --jx-focus-ring: #2ad0bf;
+  }
+
+  * {
+    border-color: var(--jx-color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--jx-color-bg);
+    color: var(--jx-color-text);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Numeric contexts use tabular figures (DS §4). */
+  .tnum,
+  .font-mono {
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Visible, brand-colored focus ring on keyboard focus (DS §41). */
+  :focus-visible {
+    outline: 2px solid var(--jx-focus-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--jx-color-accent) 24%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
