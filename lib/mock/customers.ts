@@ -271,14 +271,31 @@ function identifierTypesFor(item: CustomerListItem): IdentifierType[] {
   return types;
 }
 
-const IDENTIFIER_CHANNEL: Record<IdentifierType, Channel> = {
-  cookie_id: "web",
-  device_id: "mobile",
-  email: "email",
-  phone: "call_center",
-  loyalty_id: "in_store",
-  name: "web",
-};
+/** Source channel for an identifier, drawn from the customer's own channels. */
+function sourceChannelFor(type: IdentifierType, channels: Channel[]): Channel {
+  const has = (c: Channel) => channels.includes(c);
+  switch (type) {
+    case "device_id":
+      return "mobile";
+    case "phone":
+      return "call_center";
+    case "loyalty_id":
+      return "in_store";
+    case "cookie_id":
+      return has("web") ? "web" : "chat";
+    case "email":
+      return has("email")
+        ? "email"
+        : has("web")
+          ? "web"
+          : has("mobile")
+            ? "mobile"
+            : channels[0];
+    case "name":
+    default:
+      return channels[0];
+  }
+}
 
 function weakestLinkFor(item: CustomerListItem): {
   type: IdentifierType | null;
@@ -412,7 +429,7 @@ export function getMockCustomerById(
     return {
       type,
       value,
-      sourceChannel: IDENTIFIER_CHANNEL[type],
+      sourceChannel: sourceChannelFor(type, item.channels),
       linkMethod,
       linkConfidence,
       firstSeenIso: new Date(
