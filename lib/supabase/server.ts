@@ -8,23 +8,26 @@ import {
   supabaseUrl,
 } from "@/lib/supabase/env";
 
-let anonClient: SupabaseClient | null = null;
+let readerClient: SupabaseClient | null = null;
 let serviceClient: SupabaseClient | null = null;
 
 /**
- * Read-only server client using the anon key. Safe for Server Components /
- * queries. RLS applies (anon has SELECT on our public.* tables).
+ * Server-side Supabase client used by the query layer. Prefers the service
+ * role key so that server components can read every table regardless of RLS
+ * or anon-role GRANT gaps (this key never crosses the server/client boundary
+ * — the module is `"server-only"`). Falls back to the anon key when the
+ * service key is not configured.
  */
 export function getServerSupabase(): SupabaseClient | null {
-  if (anonClient) return anonClient;
+  if (readerClient) return readerClient;
   const url = supabaseUrl();
-  const key = supabaseAnonKey();
+  const key = supabaseServiceKey() ?? supabaseAnonKey();
   if (!url || !key) return null;
-  anonClient = createClient(url, key, {
+  readerClient = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-application-name": "journeyx-server" } },
   });
-  return anonClient;
+  return readerClient;
 }
 
 /**

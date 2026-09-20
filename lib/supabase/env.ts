@@ -24,6 +24,7 @@ export function supabaseServiceKey(): string | undefined {
   );
 }
 
+/** True when the server can read Supabase (either service or anon key). */
 export function hasSupabase(): boolean {
-  return Boolean(supabaseUrl() && supabaseAnonKey());
+  return Boolean(supabaseUrl() && (supabaseAnonKey() || supabaseServiceKey()));
 }

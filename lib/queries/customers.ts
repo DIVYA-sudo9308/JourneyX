@@ -19,18 +19,18 @@ import type {
   JourneyEvent,
   LinkMethod,
 } from "@/lib/types/customer";
-import {
-  getMockCustomers,
-  getMockCustomerById,
-  getMockCustomerJourney,
-} from "@/lib/mock/customers";
-import { hasSupabase } from "@/lib/supabase/env";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export class QueryError extends Error {
-  constructor(message: string) {
+  supabaseCode?: string;
+  supabaseHint?: string;
+  supabaseDetails?: string;
+  constructor(message: string, opts?: { code?: string; hint?: string; details?: string }) {
     super(message);
     this.name = "QueryError";
+    this.supabaseCode = opts?.code;
+    this.supabaseHint = opts?.hint;
+    this.supabaseDetails = opts?.details;
   }
 }
 
@@ -44,11 +44,38 @@ const SORT_KEYS: CustomerSortKey[] = ["lastActive", "eventCount", "churnRisk"];
 
 type CustomerSortKey = NonNullable<CustomerListFilters["sortBy"]>;
 
-/**
- * Normalize URL-param filters against the canonical enums (SoT §4.4). Rejects
- * an inverted date range early — otherwise we let the query engine (SQL or
- * mock) apply the filters.
- */
+interface SupabaseErrorLike {
+  message?: string;
+  code?: string;
+  hint?: string;
+  details?: string;
+}
+
+function raise(scope: string, error: SupabaseErrorLike): never {
+  const msg = error?.message || "Unknown Supabase error";
+  console.error(`[query:${scope}]`, {
+    message: msg,
+    code: error?.code,
+    hint: error?.hint,
+    details: error?.details,
+  });
+  throw new QueryError(`${scope}: ${msg}`, {
+    code: error?.code,
+    hint: error?.hint,
+    details: error?.details,
+  });
+}
+
+function client() {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    throw new QueryError(
+      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) in .env.local.",
+    );
+  }
+  return supabase;
+}
+
 function normalizeFilters(filters: CustomerListFilters) {
   const patterns = filters.pattern?.filter((p): p is CustomerPattern =>
     LIST_PATTERNS.includes(p),
@@ -115,96 +142,83 @@ function rowToListItem(row: CustomerRow): CustomerListItem {
   };
 }
 
+/** JSONB "any of" filter — produces `col @> '[v1]' OR col @> '[v2]' ...`. */
+function jsonbOverlapOr(column: string, values: string[]): string {
+  return values.map((v) => `${column}.cs.${JSON.stringify([v])}`).join(",");
+}
+
 /**
- * Server-side customer query (SoT D-34). When Supabase is configured, reads
- * `public.customers` with the URL-param filters applied in-DB and paginated
- * server-side. When Supabase is not configured, transparently reads the mock
- * fixture so `/customers` never breaks in a fresh clone.
+ * Server-side customer query (SoT D-34). Reads `public.customers` from
+ * Supabase with URL-param filters applied in-DB. Uses the service role client
+ * (server-only) so RLS/anon-grant gaps never mask the read.
  */
 export async function getCustomers(
   filters: CustomerListFilters,
 ): Promise<CustomerListResult> {
   const norm = normalizeFilters(filters);
-
-  if (!hasSupabase()) {
-    return getMockCustomers({
-      asOf: asOf(),
-      page: filters.page,
-      pageSize: filters.pageSize,
-      pattern: norm.patterns,
-      channel: norm.channels,
-      churnRisk: norm.churnRisk,
-      minConfidence: norm.minConfidence,
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-      sortBy: norm.sortBy,
-      sortOrder: norm.sortOrder,
-    });
-  }
-
-  const supabase = getServerSupabase();
-  if (!supabase) {
-    throw new QueryError("Supabase client unavailable.");
-  }
+  const supabase = client();
 
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.max(1, Math.min(200, filters.pageSize ?? 25));
 
-  const [{ count: totalUnfiltered }, filtered] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true }),
-    (async () => {
-      let q = supabase
-        .from("customers")
-        .select(
-          "id, display_name, email, is_anonymous, channels, event_count, last_active_at, identity_confidence, patterns, churn_risk",
-          { count: "exact" },
-        );
+  const totalUnfilteredRes = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true });
+  if (totalUnfilteredRes.error) raise("customers.count", totalUnfilteredRes.error);
+  const totalUnfiltered = totalUnfilteredRes.count ?? 0;
 
-      if (norm.churnRisk && norm.churnRisk.length > 0) {
-        q = q.in("churn_risk", norm.churnRisk);
-      }
-      if (norm.minConfidence !== undefined) {
-        q = q.gte("identity_confidence", norm.minConfidence);
-      }
-      if (filters.dateFrom) q = q.gte("last_active_at", filters.dateFrom);
-      if (filters.dateTo) q = q.lte("last_active_at", `${filters.dateTo}T23:59:59.999Z`);
+  let q = supabase
+    .from("customers")
+    .select(
+      "id, display_name, email, is_anonymous, channels, event_count, last_active_at, identity_confidence, patterns, churn_risk",
+      { count: "exact" },
+    );
 
-      if (norm.patterns && norm.patterns.length > 0) {
-        // OR across patterns (?| operator via `.overlaps` on jsonb array).
-        q = q.overlaps("patterns", norm.patterns);
-      }
-      if (norm.channels && norm.channels.length > 0) {
-        q = q.overlaps("channels", norm.channels);
-      }
+  if (norm.churnRisk && norm.churnRisk.length > 0) {
+    q = q.in("churn_risk", norm.churnRisk);
+  }
+  if (norm.minConfidence !== undefined) {
+    q = q.gte("identity_confidence", norm.minConfidence);
+  }
+  if (filters.dateFrom) q = q.gte("last_active_at", filters.dateFrom);
+  if (filters.dateTo) {
+    q = q.lte("last_active_at", `${filters.dateTo}T23:59:59.999Z`);
+  }
 
-      const sortBy = norm.sortBy ?? "lastActive";
-      const sortOrder = norm.sortOrder ?? "desc";
-      const ascending = sortOrder === "asc";
-      const column =
-        sortBy === "eventCount"
-          ? "event_count"
-          : sortBy === "churnRisk"
-            ? "churn_risk"
-            : "last_active_at";
-      q = q.order(column, { ascending, nullsFirst: false }).order("id", { ascending: true });
+  if (norm.patterns && norm.patterns.length > 0) {
+    q = q.or(jsonbOverlapOr("patterns", norm.patterns));
+  }
+  if (norm.channels && norm.channels.length > 0) {
+    q = q.or(jsonbOverlapOr("channels", norm.channels));
+  }
 
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      q = q.range(from, to);
+  const sortBy = norm.sortBy ?? "lastActive";
+  const sortOrder = norm.sortOrder ?? "desc";
+  let ascending = sortOrder === "asc";
+  let column: string;
+  if (sortBy === "eventCount") column = "event_count";
+  else if (sortBy === "churnRisk") {
+    // Text order: high < medium < none. So "desc" (worst-first) is ASC alpha.
+    column = "churn_risk";
+    ascending = sortOrder === "desc";
+  } else column = "last_active_at";
 
-      return q;
-    })(),
-  ]);
+  q = q
+    .order(column, { ascending, nullsFirst: false })
+    .order("id", { ascending: true });
 
-  if (filtered.error) throw new QueryError(filtered.error.message);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  q = q.range(from, to);
+
+  const filtered = await q;
+  if (filtered.error) raise("customers.list", filtered.error);
   const rows = (filtered.data ?? []) as CustomerRow[];
 
   return {
     items: rows.map(rowToListItem),
     total: filtered.count ?? rows.length,
-    totalUnfiltered: totalUnfiltered ?? rows.length,
+    totalUnfiltered,
     page,
     pageSize,
     asOfIso: asOf().toISOString(),
@@ -247,9 +261,7 @@ interface FullCustomerRow extends CustomerRow {
 
 export const getCustomer = cache(
   async (id: string): Promise<CustomerDetail | null> => {
-    if (!hasSupabase()) return getMockCustomerById(id, asOf());
-    const supabase = getServerSupabase();
-    if (!supabase) return getMockCustomerById(id, asOf());
+    const supabase = client();
 
     const { data: customer, error: cErr } = await supabase
       .from("customers")
@@ -258,7 +270,7 @@ export const getCustomer = cache(
       )
       .eq("id", id)
       .maybeSingle<FullCustomerRow>();
-    if (cErr) throw new QueryError(cErr.message);
+    if (cErr) raise("customer.detail", cErr);
     if (!customer) return null;
 
     const [identsRes, linksRes, churnRes, patternsRes] = await Promise.all([
@@ -281,10 +293,10 @@ export const getCustomer = cache(
         .select("pattern_type")
         .eq("customer_id", id),
     ]);
-    if (identsRes.error) throw new QueryError(identsRes.error.message);
-    if (linksRes.error) throw new QueryError(linksRes.error.message);
-    if (churnRes.error) throw new QueryError(churnRes.error.message);
-    if (patternsRes.error) throw new QueryError(patternsRes.error.message);
+    if (identsRes.error) raise("customer.identifiers", identsRes.error);
+    if (linksRes.error) raise("customer.identity_links", linksRes.error);
+    if (churnRes.error) raise("customer.churn_signals", churnRes.error);
+    if (patternsRes.error) raise("customer.patterns", patternsRes.error);
 
     const linksById = new Map<string, LinkRow>();
     for (const l of (linksRes.data ?? []) as (LinkRow & { identifier_id: string })[]) {
@@ -307,10 +319,10 @@ export const getCustomer = cache(
       };
     });
 
-    const identityConfidence = identifiers.reduce(
-      (min, i) => Math.min(min, i.linkConfidence),
-      1,
-    );
+    const identityConfidence =
+      identifiers.length > 0
+        ? identifiers.reduce((min, i) => Math.min(min, i.linkConfidence), 1)
+        : Number(customer.identity_confidence);
 
     const patternCounts: Record<CustomerPattern, number> =
       customer.metadata?.patternCounts ?? {
@@ -381,18 +393,7 @@ export const getCustomer = cache(
 
 export const getCustomerJourney = cache(
   async (id: string): Promise<CustomerJourney | null> => {
-    if (!hasSupabase()) {
-      const customer = await getCustomer(id);
-      if (!customer) return null;
-      return getMockCustomerJourney(customer, asOf());
-    }
-    const supabase = getServerSupabase();
-    if (!supabase) {
-      const customer = await getCustomer(id);
-      if (!customer) return null;
-      return getMockCustomerJourney(customer, asOf());
-    }
-
+    const supabase = client();
     const customer = await getCustomer(id);
     if (!customer) return null;
 
@@ -401,7 +402,7 @@ export const getCustomerJourney = cache(
       .select("id, channel, event_type, timestamp, metadata")
       .eq("customer_id", id)
       .order("timestamp", { ascending: true });
-    if (error) throw new QueryError(error.message);
+    if (error) raise("journey.events", error);
 
     const events: JourneyEvent[] = [];
     let sessionIndex = -1;

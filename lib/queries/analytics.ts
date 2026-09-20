@@ -8,15 +8,41 @@ import type {
   FrictionPoint,
   Kpi,
 } from "@/lib/types/analytics";
-import { getMockAnalyticsSummary } from "@/lib/mock/dashboard";
-import { hasSupabase } from "@/lib/supabase/env";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export class QueryError extends Error {
-  constructor(message: string) {
+  supabaseCode?: string;
+  supabaseHint?: string;
+  supabaseDetails?: string;
+  constructor(message: string, opts?: { code?: string; hint?: string; details?: string }) {
     super(message);
     this.name = "QueryError";
+    this.supabaseCode = opts?.code;
+    this.supabaseHint = opts?.hint;
+    this.supabaseDetails = opts?.details;
   }
+}
+
+interface SupabaseErrorLike {
+  message?: string;
+  code?: string;
+  hint?: string;
+  details?: string;
+}
+
+function raise(scope: string, error: SupabaseErrorLike): never {
+  const msg = error?.message || "Unknown Supabase error";
+  console.error(`[query:${scope}]`, {
+    message: msg,
+    code: error?.code,
+    hint: error?.hint,
+    details: error?.details,
+  });
+  throw new QueryError(`${scope}: ${msg}`, {
+    code: error?.code,
+    hint: error?.hint,
+    details: error?.details,
+  });
 }
 
 function parseDate(value: string | undefined, field: string): Date | undefined {
@@ -40,15 +66,15 @@ function parseChannels(value: Channel[] | undefined): Channel[] | undefined {
 function pct(v: number): string {
   return `${Math.round(v * 100)}%`;
 }
-
 function inr(n: number): string {
   return n.toLocaleString("en-IN");
 }
 
 /**
- * Server-side analytics query (SoT D-34). Reads live aggregates from Supabase
- * when configured, else returns the deterministic mock fixture. The KPI shape
- * matches the Screen Spec §3 dashboard contract exactly.
+ * Server-side analytics query (SoT D-34). Reads live aggregates from
+ * `public.*` in Supabase using the server-only client. Averages are computed
+ * in JS since PostgREST rejects `.avg()` aggregates without a project-level
+ * opt-in (PGRST123).
  */
 export async function getAnalyticsSummary(
   filters: DashboardFilters,
@@ -60,122 +86,103 @@ export async function getAnalyticsSummary(
   }
   const channels = parseChannels(filters.channel);
 
-  if (!hasSupabase()) {
-    return getMockAnalyticsSummary({
-      asOf: asOf(),
-      dateFrom,
-      dateTo,
-      channels,
-    });
-  }
-
   const supabase = getServerSupabase();
   if (!supabase) {
-    return getMockAnalyticsSummary({
-      asOf: asOf(),
-      dateFrom,
-      dateTo,
-      channels,
-    });
+    throw new QueryError(
+      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) in .env.local.",
+    );
   }
 
   const now = asOf();
   const fromIso = dateFrom?.toISOString();
-  const toIso = dateTo ? new Date(`${filters.dateTo}T23:59:59.999Z`).toISOString() : undefined;
+  const toIso = dateTo
+    ? new Date(`${filters.dateTo}T23:59:59.999Z`).toISOString()
+    : undefined;
 
-  // Customer aggregate counts (unfiltered — reflects the whole population).
-  const [
-    { count: knownCustomers },
-    { count: anonCustomers },
-    { count: churnHigh },
-    { count: churnMedium },
-    { count: identifierCount },
-    dropOffRows,
-    escalationRows,
-    repeatRows,
-    unresolvedRows,
-    { data: confRow },
-    eventsBase,
-  ] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("is_anonymous", false),
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("is_anonymous", true),
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("churn_risk", "high"),
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("churn_risk", "medium"),
-    supabase
-      .from("customer_identifiers")
-      .select("id", { count: "exact", head: true }),
-    supabase
+  const knownRes = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .eq("is_anonymous", false);
+  if (knownRes.error) raise("analytics.known", knownRes.error);
+  const anonRes = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .eq("is_anonymous", true);
+  if (anonRes.error) raise("analytics.anon", anonRes.error);
+  const highRes = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .eq("churn_risk", "high");
+  if (highRes.error) raise("analytics.high", highRes.error);
+  const medRes = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .eq("churn_risk", "medium");
+  if (medRes.error) raise("analytics.medium", medRes.error);
+  const identRes = await supabase
+    .from("customer_identifiers")
+    .select("id", { count: "exact", head: true });
+  if (identRes.error) raise("analytics.identifiers", identRes.error);
+
+  // Individual pattern counts (used both by KPIs and by churn correlation).
+  const patternType = async (t: string) => {
+    const r = await supabase
       .from("patterns")
       .select("customer_id", { count: "exact", head: true })
-      .eq("pattern_type", "drop_off"),
-    supabase
-      .from("patterns")
-      .select("customer_id", { count: "exact", head: true })
-      .eq("pattern_type", "escalation"),
-    supabase
-      .from("patterns")
-      .select("customer_id", { count: "exact", head: true })
-      .eq("pattern_type", "repeat_contact"),
-    supabase
-      .from("patterns")
-      .select("customer_id", { count: "exact", head: true })
-      .eq("pattern_type", "unresolved_issue"),
-    supabase
-      .from("customers")
-      .select("avg_confidence:identity_confidence.avg()")
-      .maybeSingle(),
-    (async () => {
-      let q = supabase
-        .from("events")
-        .select("id", { count: "exact", head: true });
-      if (channels && channels.length > 0) q = q.in("channel", channels);
-      if (fromIso) q = q.gte("timestamp", fromIso);
-      if (toIso) q = q.lte("timestamp", toIso);
-      return q;
-    })(),
+      .eq("pattern_type", t);
+    if (r.error) raise(`analytics.patterns.${t}`, r.error);
+    return r.count ?? 0;
+  };
+  const [drops, escalations, repeats, unresolved] = await Promise.all([
+    patternType("drop_off"),
+    patternType("escalation"),
+    patternType("repeat_contact"),
+    patternType("unresolved_issue"),
   ]);
 
-  const totalEvents = eventsBase.count ?? 0;
-  const known = knownCustomers ?? 0;
-  const anon = anonCustomers ?? 0;
-  const idents = identifierCount ?? 0;
-  const drops = dropOffRows.count ?? 0;
-  const escalations = escalationRows.count ?? 0;
-  const repeats = repeatRows.count ?? 0;
-  const unresolved = unresolvedRows.count ?? 0;
-  const high = churnHigh ?? 0;
-  const medium = churnMedium ?? 0;
+  // Events count with optional channel + date filters.
+  let evQ = supabase.from("events").select("id", { count: "exact", head: true });
+  if (channels && channels.length > 0) evQ = evQ.in("channel", channels);
+  if (fromIso) evQ = evQ.gte("timestamp", fromIso);
+  if (toIso) evQ = evQ.lte("timestamp", toIso);
+  const evRes = await evQ;
+  if (evRes.error) raise("analytics.events", evRes.error);
+  const totalEvents = evRes.count ?? 0;
 
-  const avgConfidence = Number(
-    (confRow as { avg_confidence?: number | string } | null)?.avg_confidence ?? 0,
+  // Avg link confidence, computed in JS (PGRST123 blocks `.avg()` here).
+  const confRes = await supabase
+    .from("customers")
+    .select("identity_confidence")
+    .eq("is_anonymous", false);
+  if (confRes.error) raise("analytics.avg_confidence", confRes.error);
+  const confs = (confRes.data ?? []).map((r) =>
+    Number((r as { identity_confidence: number | string }).identity_confidence),
   );
+  const avgConfidence =
+    confs.length > 0 ? confs.reduce((s, v) => s + v, 0) / confs.length : 0;
+
+  const known = knownRes.count ?? 0;
+  const anon = anonRes.count ?? 0;
+  const high = highRes.count ?? 0;
+  const medium = medRes.count ?? 0;
+  const idents = identRes.count ?? 0;
   const repeatRate = known > 0 ? repeats / known : 0;
 
-  // Friction ranking: top drop-off event_type × channel by affected customer count.
-  const dropOffMeta = await supabase
+  // Friction & escalation ranking: aggregate pattern rows client-side.
+  const dropMeta = await supabase
     .from("patterns")
     .select("customer_id, metadata")
     .eq("pattern_type", "drop_off");
-  const escalationMeta = await supabase
+  if (dropMeta.error) raise("analytics.friction.drop_off", dropMeta.error);
+  const escMeta = await supabase
     .from("patterns")
     .select("customer_id, metadata")
     .eq("pattern_type", "escalation");
+  if (escMeta.error) raise("analytics.friction.escalation", escMeta.error);
 
   const frictionMap = new Map<string, FrictionPoint>();
-  for (const row of dropOffMeta.data ?? []) {
-    const meta = (row.metadata ?? {}) as {
+  for (const row of dropMeta.data ?? []) {
+    const meta = ((row as { metadata: unknown }).metadata ?? {}) as {
       channel?: Channel;
       eventType?: string;
       reason?: string;
@@ -202,18 +209,14 @@ export async function getAnalyticsSummary(
     .slice(0, 5);
 
   const pairMap = new Map<string, EscalationPair>();
-  for (const row of escalationMeta.data ?? []) {
-    const meta = (row.metadata ?? {}) as {
+  for (const row of escMeta.data ?? []) {
+    const meta = ((row as { metadata: unknown }).metadata ?? {}) as {
       source?: Channel;
       destination?: Channel;
     };
     const source = meta.source ?? "web";
     const destination = meta.destination ?? "call_center";
-    if (
-      channels &&
-      !channels.includes(source) &&
-      !channels.includes(destination)
-    ) {
+    if (channels && !channels.includes(source) && !channels.includes(destination)) {
       continue;
     }
     const key = `${source}->${destination}`;
@@ -231,56 +234,54 @@ export async function getAnalyticsSummary(
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // Churn correlation is a deterministic derivation for the MVP: rate of
-  // (high|medium) churn among customers that carry the given pattern.
-  const churnCorrelation: ChurnCorrelationRow[] = await (async () => {
-    const rows: ChurnCorrelationRow[] = [];
-    const patterns = [
-      { key: "drop_off", label: "Checkout drop-off" },
-      { key: "escalation", label: "Escalation" },
-      { key: "repeat_contact", label: "Repeat contact" },
-      { key: "unresolved_issue", label: "Unresolved issue" },
-    ] as const;
-
-    for (const p of patterns) {
-      const { data, error } = await supabase
-        .from("patterns")
-        .select("customer_id, customers!inner(churn_risk)")
-        .eq("pattern_type", p.key);
-      if (error) continue;
-      const withCustomers = (data ?? []) as {
+  // Churn correlation: rate of (high|medium) churn among customers carrying
+  // each pattern. Read pattern rows and inline-fetch churn_risk per customer.
+  const patternDefs = [
+    { key: "drop_off", label: "Checkout drop-off" },
+    { key: "escalation", label: "Escalation" },
+    { key: "repeat_contact", label: "Repeat contact" },
+    { key: "unresolved_issue", label: "Unresolved issue" },
+  ] as const;
+  const churnCorrelation: ChurnCorrelationRow[] = [];
+  for (const p of patternDefs) {
+    const pr = await supabase
+      .from("patterns")
+      .select("customer_id, customers!inner(churn_risk)")
+      .eq("pattern_type", p.key);
+    if (pr.error) {
+      raise(`analytics.correlation.${p.key}`, pr.error);
+    }
+    const seen = new Set<string>();
+    let churnedWith = 0;
+    for (const row of pr.data ?? []) {
+      const r = row as {
         customer_id: string;
         customers: { churn_risk: string } | { churn_risk: string }[];
-      }[];
-      const seen = new Set<string>();
-      let churnedWith = 0;
-      for (const row of withCustomers) {
-        if (seen.has(row.customer_id)) continue;
-        seen.add(row.customer_id);
-        const c = Array.isArray(row.customers) ? row.customers[0] : row.customers;
-        if (c && (c.churn_risk === "high" || c.churn_risk === "medium")) {
-          churnedWith += 1;
-        }
+      };
+      if (seen.has(r.customer_id)) continue;
+      seen.add(r.customer_id);
+      const c = Array.isArray(r.customers) ? r.customers[0] : r.customers;
+      if (c && (c.churn_risk === "high" || c.churn_risk === "medium")) {
+        churnedWith += 1;
       }
-      const n = seen.size;
-      const withRate = n > 0 ? churnedWith / n : 0;
-      const totalChurn = high + medium;
-      const totalKnown = known + anon;
-      const withoutN = Math.max(1, totalKnown - n);
-      const withoutRate = Math.max(0, (totalChurn - churnedWith) / withoutN);
-      const lift = withoutRate > 0 ? withRate / withoutRate : 0;
-      rows.push({
-        pattern: p.key,
-        patternLabel: p.label,
-        churnRateWith: Number(withRate.toFixed(2)),
-        churnRateWithout: Number(withoutRate.toFixed(2)),
-        lift: Number(lift.toFixed(2)),
-        n,
-        href: `/customers?pattern=${p.key}&churnRisk=high,medium`,
-      });
     }
-    return rows;
-  })();
+    const n = seen.size;
+    const withRate = n > 0 ? churnedWith / n : 0;
+    const totalChurn = high + medium;
+    const totalKnown = known + anon;
+    const withoutN = Math.max(1, totalKnown - n);
+    const withoutRate = Math.max(0, (totalChurn - churnedWith) / withoutN);
+    const lift = withoutRate > 0 ? withRate / withoutRate : 0;
+    churnCorrelation.push({
+      pattern: p.key,
+      patternLabel: p.label,
+      churnRateWith: Number(withRate.toFixed(2)),
+      churnRateWithout: Number(withoutRate.toFixed(2)),
+      lift: Number(lift.toFixed(2)),
+      n,
+      href: `/customers?pattern=${p.key}&churnRisk=high,medium`,
+    });
+  }
 
   const kpis: Kpi[] = [
     {
@@ -306,7 +307,7 @@ export async function getAnalyticsSummary(
     {
       key: "avg_link_confidence",
       label: "Avg. link confidence",
-      value: (avgConfidence || 0).toFixed(2),
+      value: avgConfidence.toFixed(2),
       delta: { value: "excl. new profile", tone: "neutral" },
     },
     {
