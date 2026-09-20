@@ -1,13 +1,22 @@
-import { CHANNELS, type Channel, type ChurnRisk } from "@/lib/types/domain";
+import {
+  CHANNELS,
+  CHANNEL_LABEL,
+  type Channel,
+  type ChurnRisk,
+} from "@/lib/types/domain";
 import type {
   CustomerDetail,
   CustomerIdentifier,
+  CustomerJourney,
   CustomerListFilters,
   CustomerListItem,
   CustomerListResult,
   CustomerPattern,
   ChurnSignal,
+  EventCategory,
   IdentifierType,
+  JourneyEvent,
+  JourneyEventPattern,
   LinkMethod,
 } from "@/lib/types/customer";
 
@@ -472,6 +481,450 @@ export function getMockCustomerById(
     churnRisk: item.churnRisk,
     churnSignals: churnSignalsFor(item, silenceDays, repeatCount),
     patternCounts,
+    asOfIso: asOf.toISOString(),
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Journey generator (S-04). Builds a coherent, deterministic event
+ * stream for a customer that visibly carries their channels and detected
+ * patterns, then computes sessions/journeys/transitions (SoT §4.7).
+ * ------------------------------------------------------------------ */
+
+const CATEGORY_OF: Record<string, EventCategory> = {
+  page_view: "browse",
+  product_view: "browse",
+  search: "browse",
+  category_view: "browse",
+  add_to_cart: "commerce",
+  checkout_start: "commerce",
+  payment_attempt: "commerce",
+  purchase_complete: "commerce",
+  store_visit: "in_store",
+  pos_transaction: "in_store",
+  loyalty_scan: "in_store",
+  return_processed: "in_store",
+  login: "account",
+  call_started: "support",
+  call_ended: "support",
+  ticket_created: "support",
+  ticket_resolved: "support",
+  chat_started: "support",
+  chat_ended: "support",
+  email_sent: "support",
+  email_campaign_opened: "engagement",
+};
+
+const BROWSE_TYPES: Partial<Record<Channel, string[]>> = {
+  web: ["page_view", "product_view", "search", "category_view"],
+  mobile: ["page_view", "product_view"],
+  email: ["email_campaign_opened"],
+  in_store: ["store_visit"],
+};
+
+const SUPPORT_START: Partial<Record<Channel, string>> = {
+  call_center: "call_started",
+  chat: "chat_started",
+  email: "ticket_created",
+};
+
+/** Minor browse types that the timeline may group into a single node. */
+export const MINOR_BROWSE_TYPES = new Set([
+  "page_view",
+  "product_view",
+  "search",
+  "category_view",
+  "email_campaign_opened",
+]);
+
+interface PlanStep {
+  channel: Channel;
+  type: string;
+  patterns?: JourneyEventPattern[];
+}
+
+/** Channel effort tiers (SoT §4.8) — an escalation is a lower→higher tier move. */
+const CHANNEL_TIER: Record<Channel, number> = {
+  web: 1,
+  mobile: 1,
+  email: 2,
+  chat: 2,
+  call_center: 3,
+  in_store: 4,
+};
+
+function addPattern(step: PlanStep, pattern: JourneyEventPattern): void {
+  (step.patterns ??= []).push(pattern);
+}
+
+function amountInr(rng: () => number): number {
+  return (5 + Math.floor(rng() * 120)) * 49; // ₹245 – ₹6,076-ish
+}
+
+function summarizeAndDetail(
+  step: PlanStep,
+  rng: () => number,
+): { summary: string; metadata: { label: string; value: string }[] } {
+  const t = step.type;
+  const isDropAnchor = step.patterns?.some((p) => p.type === "drop_off") ?? false;
+  switch (t) {
+    case "page_view":
+      return { summary: "Viewed a page", metadata: [{ label: "page_url", value: "/products" }] };
+    case "product_view":
+      return {
+        summary: "Viewed a product",
+        metadata: [{ label: "product_id", value: `SKU-${1000 + Math.floor(rng() * 8999)}` }],
+      };
+    case "search":
+      return { summary: "Ran a search", metadata: [{ label: "query", value: "running shoes" }] };
+    case "category_view":
+      return { summary: "Browsed a category", metadata: [{ label: "category", value: "Footwear" }] };
+    case "login":
+      return { summary: "Logged in", metadata: [{ label: "method", value: "password" }] };
+    case "add_to_cart": {
+      const a = amountInr(rng);
+      return { summary: `Added to cart · ₹${a.toLocaleString("en-IN")}`, metadata: [{ label: "amount", value: `₹${a.toLocaleString("en-IN")}` }] };
+    }
+    case "checkout_start": {
+      const a = amountInr(rng);
+      return { summary: `Started checkout · ₹${a.toLocaleString("en-IN")}`, metadata: [{ label: "cart_value", value: `₹${a.toLocaleString("en-IN")}` }] };
+    }
+    case "payment_attempt": {
+      const a = amountInr(rng);
+      return isDropAnchor
+        ? {
+            summary: `Payment declined · ₹${a.toLocaleString("en-IN")}`,
+            metadata: [
+              { label: "amount", value: `₹${a.toLocaleString("en-IN")}` },
+              { label: "error_code", value: "card_declined" },
+              { label: "payment_method", value: "credit_card" },
+            ],
+          }
+        : {
+            summary: `Payment · ₹${a.toLocaleString("en-IN")}`,
+            metadata: [{ label: "amount", value: `₹${a.toLocaleString("en-IN")}` }],
+          };
+    }
+    case "purchase_complete": {
+      const a = amountInr(rng);
+      return { summary: `Purchase complete · ₹${a.toLocaleString("en-IN")}`, metadata: [{ label: "amount", value: `₹${a.toLocaleString("en-IN")}` }] };
+    }
+    case "call_started":
+      return {
+        summary: "Call started",
+        metadata: [
+          { label: "reason", value: "payment_failure" },
+          { label: "wait_seconds", value: String(60 + Math.floor(rng() * 300)) },
+        ],
+      };
+    case "call_ended":
+      return { summary: "Call ended", metadata: [{ label: "disposition", value: step.patterns?.length ? "unresolved" : "pending" }] };
+    case "chat_started":
+      return { summary: "Chat started", metadata: [{ label: "topic", value: "order_help" }] };
+    case "chat_ended":
+      return { summary: "Chat ended", metadata: [{ label: "disposition", value: "pending" }] };
+    case "ticket_created":
+      return {
+        summary: "Support ticket opened",
+        metadata: [
+          { label: "ticket_id", value: `TKT-${1000 + Math.floor(rng() * 8999)}` },
+          { label: "reason", value: "order_issue" },
+          { label: "status", value: "open" },
+        ],
+      };
+    case "ticket_resolved":
+      return { summary: "Ticket resolved", metadata: [{ label: "status", value: "resolved" }] };
+    case "email_sent":
+      return { summary: "Support email sent", metadata: [{ label: "reason", value: "order_issue" }] };
+    case "email_campaign_opened":
+      return { summary: "Opened a campaign email", metadata: [{ label: "campaign", value: "autumn_sale" }] };
+    case "store_visit":
+      return { summary: "Visited a store", metadata: [{ label: "store", value: "Ahmedabad One" }] };
+    case "pos_transaction": {
+      const a = amountInr(rng);
+      return { summary: `In-store purchase · ₹${a.toLocaleString("en-IN")}`, metadata: [{ label: "amount", value: `₹${a.toLocaleString("en-IN")}` }] };
+    }
+    case "loyalty_scan":
+      return { summary: "Loyalty card scanned", metadata: [{ label: "points", value: String(10 + Math.floor(rng() * 90)) }] };
+    case "return_processed":
+      return { summary: "Return processed", metadata: [{ label: "status", value: "refunded" }] };
+    default:
+      return { summary: t.replace(/_/g, " "), metadata: [] };
+  }
+}
+
+function resolutionFor(
+  step: PlanStep,
+  index: number,
+  customer: CustomerDetail,
+): JourneyEvent["resolution"] {
+  if (index === 0) {
+    return {
+      method: "origin",
+      confidence: customer.isAnonymous ? customer.identityConfidence : 1.0,
+      evidence: [`New profile created from ${CHANNEL_LABEL[step.channel]} activity`],
+    };
+  }
+  if (step.type === "login" && !customer.isAnonymous && customer.identityConfidence < 1) {
+    return {
+      method: "probabilistic",
+      confidence: customer.identityConfidence,
+      evidence: [
+        "Same-session cookie continuity (+0.50)",
+        "Login supplied email — bridged to the anonymous session",
+      ],
+    };
+  }
+  const strong =
+    CATEGORY_OF[step.type] === "support" || CATEGORY_OF[step.type] === "in_store";
+  return {
+    method: "deterministic",
+    confidence: 1.0,
+    evidence: [strong ? "Exact match on a strong identifier" : "Linked via an existing identifier"],
+  };
+}
+
+export function getMockCustomerJourney(
+  customer: CustomerDetail,
+  asOf: Date,
+): CustomerJourney {
+  const rng = mulberry32(idSeed(customer.id) + 101);
+  const channels = customer.channels;
+  const target = customer.eventCount;
+  const commerceCh = channels.find((c) => c === "web" || c === "mobile") ?? null;
+  const browseCh =
+    commerceCh ?? channels.find((c) => BROWSE_TYPES[c]) ?? channels[0];
+  const supportCh = channels.find((c) => SUPPORT_START[c]) ?? null;
+
+  const steps: PlanStep[] = [];
+  let groupSeq = 0;
+  const newGroup = () => `${customer.id}-g${groupSeq++}`;
+  const pushBrowse = (ch: Channel) => {
+    const pool = BROWSE_TYPES[ch] ?? ["page_view"];
+    steps.push({ channel: ch, type: pool[Math.floor(rng() * pool.length)] });
+  };
+
+  // Opening browse.
+  pushBrowse(browseCh);
+  pushBrowse(browseCh);
+  if (!customer.isAnonymous && commerceCh)
+    steps.push({ channel: commerceCh, type: "login" });
+
+  // Drop-off: checkout that never completes.
+  if (customer.patternCounts.drop_off > 0) {
+    const ch = commerceCh ?? browseCh;
+    const g = newGroup();
+    steps.push({ channel: ch, type: "add_to_cart" });
+    steps.push({ channel: ch, type: "checkout_start" });
+    steps.push({
+      channel: ch,
+      type: "payment_attempt",
+      patterns: [
+        {
+          type: "drop_off",
+          role: "anchor",
+          groupId: g,
+          label: "Checkout drop-off",
+          detail: "Checkout started but no purchase completed within 2 hours.",
+        },
+      ],
+    });
+  }
+
+  // Escalation: a lower-tier self-service attempt immediately followed by an
+  // assisted contact (kept adjacent so they fall inside the 48h window).
+  if (customer.patternCounts.escalation > 0 && supportCh) {
+    const g = newGroup();
+    const lowerCh =
+      channels.find(
+        (c) => c !== supportCh && CHANNEL_TIER[c] < CHANNEL_TIER[supportCh],
+      ) ?? null;
+
+    if (lowerCh) {
+      const srcType = BROWSE_TYPES[lowerCh]?.[0] ?? "page_view";
+      steps.push({
+        channel: lowerCh,
+        type: srcType,
+        patterns: [
+          {
+            type: "escalation",
+            role: "related",
+            groupId: g,
+            label: "Escalation source",
+            detail: `Self-service attempt on ${CHANNEL_LABEL[lowerCh]} before escalating.`,
+          },
+        ],
+      });
+    }
+    steps.push({
+      channel: supportCh,
+      type: SUPPORT_START[supportCh]!,
+      patterns: [
+        {
+          type: "escalation",
+          role: "anchor",
+          groupId: g,
+          label: lowerCh
+            ? `Escalation · ${CHANNEL_LABEL[lowerCh]} → ${CHANNEL_LABEL[supportCh]}`
+            : "Escalation",
+          detail: lowerCh
+            ? `Escalated from ${CHANNEL_LABEL[lowerCh]} to ${CHANNEL_LABEL[supportCh]} within 48 hours.`
+            : `Escalated to ${CHANNEL_LABEL[supportCh]} support.`,
+        },
+      ],
+    });
+    if (supportCh === "call_center")
+      steps.push({ channel: supportCh, type: "call_ended" });
+  }
+
+  // Unresolved issue: a ticket that is never resolved.
+  if (customer.patternCounts.unresolved_issue > 0) {
+    const ch = supportCh === "email" ? "email" : supportCh ?? channels[0];
+    const g = newGroup();
+    steps.push({
+      channel: ch,
+      type: "ticket_created",
+      patterns: [
+        {
+          type: "unresolved_issue",
+          role: "anchor",
+          groupId: g,
+          label: "Unresolved issue",
+          detail: "Support ticket still open past the 7-day window.",
+        },
+      ],
+    });
+  }
+
+  // Repeat contact: a later cluster of support contacts.
+  if (customer.patternCounts.repeat_contact >= 1 && supportCh) {
+    const g = newGroup();
+    const contacts = customer.patternCounts.repeat_contact + 1;
+    const first = steps.find((s) => CATEGORY_OF[s.type] === "support");
+    if (first) {
+      addPattern(first, {
+        type: "repeat_contact",
+        role: "anchor",
+        groupId: g,
+        label: "Repeat contact",
+        detail: `${contacts} support contacts within 7 days.`,
+      });
+    }
+    const extra = Math.max(1, customer.patternCounts.repeat_contact);
+    for (let k = 0; k < extra; k++) {
+      steps.push({
+        channel: supportCh,
+        type: SUPPORT_START[supportCh]!,
+        patterns: [
+          {
+            type: "repeat_contact",
+            role: "related",
+            groupId: g,
+            label: `Contact ${k + 2} of ${contacts}`,
+            detail: "Follow-up contact about the same issue.",
+          },
+        ],
+      });
+    }
+  }
+
+  // Pad with browse/engagement to reach the target count.
+  let guard = 0;
+  while (steps.length < target && guard++ < target + 50) {
+    pushBrowse(channels[Math.floor(rng() * channels.length)]);
+  }
+  // Trim excess, keeping pattern-tagged steps.
+  if (steps.length > target) {
+    for (let i = steps.length - 1; i >= 0 && steps.length > target; i--) {
+      if (!steps[i].patterns) steps.splice(i, 1);
+    }
+  }
+
+  // Timestamps spanning [firstSeen, lastSeen]. Journey breaks (multi-day gaps)
+  // are placed periodically but never between a pattern group's members (an
+  // escalation source must stay with its contact), so patterns read coherently.
+  const firstSeen = new Date(customer.firstSeenIso).getTime();
+  const lastSeen = new Date(customer.lastSeenIso).getTime();
+  const activeMs = Math.max(DAY, lastSeen - firstSeen);
+  const n = steps.length;
+
+  const journeyEvery = Math.max(2, Math.ceil(n / 3));
+  const breakBefore = new Array<boolean>(n).fill(false);
+  let sinceBreak = 0;
+  for (let i = 1; i < n; i++) {
+    sinceBreak += 1;
+    const keepTogether = Boolean(
+      steps[i - 1].patterns?.some((p) => p.role === "related") &&
+        steps[i].patterns?.some((p) => p.role === "anchor"),
+    );
+    if (!keepTogether && sinceBreak >= journeyEvery) {
+      breakBefore[i] = true;
+      sinceBreak = 0;
+    }
+  }
+  const totalBreaks = breakBefore.filter(Boolean).length;
+  const dayPerBreak = totalBreaks > 0 ? activeMs / totalBreaks : 0;
+
+  const events: JourneyEvent[] = [];
+  let prevTime: number | null = null;
+  let prevChannel: Channel | null = null;
+  let sessionIndex = -1;
+  let journeyIndex = -1;
+  let t = firstSeen;
+
+  for (let i = 0; i < n; i++) {
+    const step = steps[i];
+    if (i === 0) t = firstSeen;
+    else if (breakBefore[i])
+      t += Math.round(dayPerBreak * (0.85 + rng() * 0.3));
+    else t += (4 + Math.floor(rng() * 30)) * 60_000;
+    if (i === n - 1) t = Math.max(lastSeen, (prevTime ?? lastSeen) + 60_000);
+    if (prevTime !== null && t <= prevTime) t = prevTime + 60_000;
+
+    const gapMinutes =
+      prevTime === null ? 0 : Math.round((t - prevTime) / 60_000);
+    const isJourneyStart = i === 0 || gapMinutes > 24 * 60;
+    const isTransition = prevChannel !== null && step.channel !== prevChannel;
+    const isSessionStart = i === 0 || gapMinutes > 30 || isTransition;
+    if (isJourneyStart) journeyIndex += 1;
+    if (isSessionStart) sessionIndex += 1;
+
+    const { summary, metadata } = summarizeAndDetail(step, rng);
+
+    events.push({
+      id: `${customer.id}-e${(i + 1).toString().padStart(3, "0")}`,
+      timestampIso: new Date(t).toISOString(),
+      channel: step.channel,
+      eventType: step.type,
+      eventCategory: CATEGORY_OF[step.type] ?? "unknown",
+      summary,
+      metadata,
+      resolution: resolutionFor(step, i, customer),
+      sessionIndex,
+      journeyIndex,
+      isSessionStart,
+      isJourneyStart,
+      isTransition,
+      transitionFrom: isTransition ? prevChannel : null,
+      gapMinutes,
+      patterns: step.patterns ?? [],
+    });
+
+    prevTime = t;
+    prevChannel = step.channel;
+  }
+
+  return {
+    id: customer.id,
+    displayName: customer.displayName,
+    isAnonymous: customer.isAnonymous,
+    events,
+    channels,
+    totalEvents: events.length,
+    journeyCount: journeyIndex + 1,
+    sessionCount: sessionIndex + 1,
+    silenceDays: customer.silenceDays,
+    churnRisk: customer.churnRisk,
     asOfIso: asOf.toISOString(),
   };
 }

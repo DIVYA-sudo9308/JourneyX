@@ -103,3 +103,71 @@ export interface CustomerDetail {
   patternCounts: Record<CustomerPattern, number>;
   asOfIso: string;
 }
+
+/* ------------------------------------------------------------------ *
+ * Customer journey (S-04). The journey engine is computed at read time
+ * (SoT §4.7): sessions (≤30m same channel), journeys (≤24h across
+ * channels), transitions (channel change), plus detector patterns.
+ * ------------------------------------------------------------------ */
+
+export type EventCategory =
+  | "browse"
+  | "commerce"
+  | "account"
+  | "support"
+  | "engagement"
+  | "in_store"
+  | "unknown";
+
+/** A pattern annotation attached to an event (SoT §4.8). */
+export interface JourneyEventPattern {
+  type: CustomerPattern;
+  /** Short badge label, e.g. "Escalation · mobile → call center". */
+  label: string;
+  /** One-line explanation shown in the expanded card. */
+  detail: string;
+  role: "anchor" | "related";
+  /** Ties an anchor to its related events for highlight-on-click. */
+  groupId: string;
+}
+
+export interface JourneyEvent {
+  id: string;
+  timestampIso: string;
+  channel: Channel;
+  eventType: string;
+  eventCategory: EventCategory;
+  /** One-line metadata summary for the collapsed card. */
+  summary: string;
+  /** Key/value pairs for the expanded card (already display-formatted). */
+  metadata: { label: string; value: string }[];
+  resolution: {
+    method: LinkMethod;
+    confidence: number;
+    evidence: string[];
+  };
+  sessionIndex: number;
+  journeyIndex: number;
+  isSessionStart: boolean;
+  isJourneyStart: boolean;
+  /** Channel differs from the previous event. */
+  isTransition: boolean;
+  transitionFrom: Channel | null;
+  /** Minutes since the previous event (0 for the first). */
+  gapMinutes: number;
+  patterns: JourneyEventPattern[];
+}
+
+export interface CustomerJourney {
+  id: string;
+  displayName: string | null;
+  isAnonymous: boolean;
+  events: JourneyEvent[];
+  channels: Channel[];
+  totalEvents: number;
+  journeyCount: number;
+  sessionCount: number;
+  silenceDays: number;
+  churnRisk: ChurnRisk;
+  asOfIso: string;
+}

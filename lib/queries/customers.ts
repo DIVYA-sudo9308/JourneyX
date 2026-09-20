@@ -9,13 +9,18 @@ import {
 } from "@/lib/types/domain";
 import type {
   CustomerDetail,
+  CustomerJourney,
   CustomerListFilters,
   CustomerListResult,
   CustomerPattern,
   CustomerSortKey,
   SortOrder,
 } from "@/lib/types/customer";
-import { getMockCustomers, getMockCustomerById } from "@/lib/mock/customers";
+import {
+  getMockCustomers,
+  getMockCustomerById,
+  getMockCustomerJourney,
+} from "@/lib/mock/customers";
 
 export class QueryError extends Error {
   constructor(message: string) {
@@ -98,5 +103,21 @@ export async function getCustomers(
 export const getCustomer = cache(
   async (id: string): Promise<CustomerDetail | null> => {
     return getMockCustomerById(id, asOf());
+  },
+);
+
+/**
+ * Customer journey (S-04). Reuses the cached detail, then computes the
+ * read-time journey model (sessions, journeys, transitions, patterns,
+ * silence — SoT §4.7). Returns null for an unknown id. Backend-independent:
+ * a Prisma-backed journey query swaps in here without touching the UI.
+ */
+export const getCustomerJourney = cache(
+  async (id: string): Promise<CustomerJourney | null> => {
+    const customer = await getCustomer(id);
+    if (!customer) return null;
+    // Simulated latency so the route's loading skeleton is real.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return getMockCustomerJourney(customer, asOf());
   },
 );
