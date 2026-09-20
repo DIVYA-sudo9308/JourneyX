@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { asOf } from "@/lib/shared/clock";
 import {
   CHANNELS,
@@ -6,13 +8,14 @@ import {
   type ChurnRisk,
 } from "@/lib/types/domain";
 import type {
+  CustomerDetail,
   CustomerListFilters,
   CustomerListResult,
   CustomerPattern,
   CustomerSortKey,
   SortOrder,
 } from "@/lib/types/customer";
-import { getMockCustomers } from "@/lib/mock/customers";
+import { getMockCustomers, getMockCustomerById } from "@/lib/mock/customers";
 
 export class QueryError extends Error {
   constructor(message: string) {
@@ -85,3 +88,15 @@ export async function getCustomers(
     sortOrder,
   });
 }
+
+/**
+ * Single customer detail (S-03). `cache()` dedupes the lookup so the shell
+ * layout and the Overview page share one read per request. Returns null for an
+ * unknown id, which the route turns into a 404 (not-found). Swaps to Prisma
+ * later without touching callers (SoT D-34).
+ */
+export const getCustomer = cache(
+  async (id: string): Promise<CustomerDetail | null> => {
+    return getMockCustomerById(id, asOf());
+  },
+);

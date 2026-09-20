@@ -1,9 +1,14 @@
 import { CHANNELS, type Channel, type ChurnRisk } from "@/lib/types/domain";
 import type {
+  CustomerDetail,
+  CustomerIdentifier,
   CustomerListFilters,
   CustomerListItem,
   CustomerListResult,
   CustomerPattern,
+  ChurnSignal,
+  IdentifierType,
+  LinkMethod,
 } from "@/lib/types/customer";
 
 /**
@@ -219,6 +224,237 @@ export function getMockCustomers(
     totalUnfiltered: population.length,
     page,
     pageSize,
+    asOfIso: asOf.toISOString(),
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer detail (S-03). Derived from the same population so a row and
+ * its detail always agree, using a per-id sub-RNG so the list output is
+ * untouched. Identifier VALUES are full here (SoT D-12); the list stays
+ * masked. All values are synthetic (SoT §7.5).
+ * ------------------------------------------------------------------ */
+
+const DAY = 86_400_000;
+
+function idSeed(id: string): number {
+  const n = Number(id.replace(/\D/g, "")) || 1;
+  return n * 7919;
+}
+
+function digits(rng: () => number, count: number): string {
+  let out = "";
+  for (let i = 0; i < count; i++) out += Math.floor(rng() * 10);
+  return out;
+}
+
+function fullEmail(displayName: string, maskedEmail: string | null): string {
+  const domain = maskedEmail?.split("@")[1] ?? "example.com";
+  const parts = displayName.toLowerCase().split(" ");
+  const first = parts[0] ?? "customer";
+  const last = parts[1] ?? "user";
+  return `${first}.${last}@${domain}`;
+}
+
+/** Which identifier types a profile carries, in canonical display order. */
+function identifierTypesFor(item: CustomerListItem): IdentifierType[] {
+  const types: IdentifierType[] = [];
+  if (item.channels.includes("web") || item.channels.includes("chat"))
+    types.push("cookie_id");
+  if (item.channels.includes("mobile")) types.push("device_id");
+  if (!item.isAnonymous) types.push("email");
+  if (item.channels.includes("call_center")) types.push("phone");
+  if (item.channels.includes("in_store")) types.push("loyalty_id");
+  if (!item.isAnonymous) types.push("name");
+  // Guarantee at least one identifier.
+  if (types.length === 0) types.push("cookie_id");
+  return types;
+}
+
+const IDENTIFIER_CHANNEL: Record<IdentifierType, Channel> = {
+  cookie_id: "web",
+  device_id: "mobile",
+  email: "email",
+  phone: "call_center",
+  loyalty_id: "in_store",
+  name: "web",
+};
+
+function weakestLinkFor(item: CustomerListItem): {
+  type: IdentifierType | null;
+  explanation: string;
+} {
+  const conf = item.identityConfidence;
+  if (item.isAnonymous)
+    return {
+      type: item.channels.includes("web") ? "cookie_id" : "device_id",
+      explanation: "Anonymous — no strong identifier resolved yet.",
+    };
+  if (conf >= 0.95)
+    return {
+      type: null,
+      explanation: "All identifiers matched on strong deterministic evidence.",
+    };
+  if (conf >= 0.8)
+    return {
+      type: "email",
+      explanation:
+        "Email bridged to an anonymous web session via same-session continuity.",
+    };
+  return {
+    type: item.channels.includes("mobile") ? "device_id" : "email",
+    explanation:
+      "Shared device with a near-match name (low-confidence probabilistic).",
+  };
+}
+
+function churnSignalsFor(
+  item: CustomerListItem,
+  silenceDays: number,
+  repeatCount: number,
+): ChurnSignal[] {
+  const signals: ChurnSignal[] = [];
+  if (item.churnRisk === "high") {
+    if (item.patterns.includes("escalation"))
+      signals.push({
+        rule: "escalation_abandonment",
+        evidence: `Escalation, then ${silenceDays} days of silence.`,
+      });
+    if (repeatCount >= 3)
+      signals.push({
+        rule: "repeated_frustration",
+        evidence: `${repeatCount} repeat contacts within 30 days.`,
+      });
+    if (signals.length === 0)
+      signals.push({
+        rule: "escalation_abandonment",
+        evidence: `High-risk pattern, then ${silenceDays} days of silence.`,
+      });
+  } else if (item.churnRisk === "medium") {
+    if (item.patterns.includes("drop_off"))
+      signals.push({
+        rule: "process_abandonment",
+        evidence: "Checkout drop-off with no purchase for 7+ days.",
+      });
+    if (item.patterns.includes("unresolved_issue"))
+      signals.push({
+        rule: "unresolved_complaint",
+        evidence: "Open unresolved issue past the 7-day window.",
+      });
+    if (signals.length === 0)
+      signals.push({
+        rule: "process_abandonment",
+        evidence: "Medium-risk journey pattern detected.",
+      });
+  }
+  return signals;
+}
+
+export function getMockCustomerById(
+  id: string,
+  asOf: Date,
+): CustomerDetail | null {
+  const item = buildPopulation(asOf).find((c) => c.id === id);
+  if (!item) return null;
+
+  const rng = mulberry32(idSeed(id));
+  const lastSeen = new Date(item.lastActiveIso);
+  const activeDurationDays = 12 + Math.floor(rng() * 80);
+  const firstSeen = new Date(lastSeen.getTime() - activeDurationDays * DAY);
+  const silenceDays = Math.max(
+    0,
+    Math.floor((asOf.getTime() - lastSeen.getTime()) / DAY),
+  );
+
+  const weak = weakestLinkFor(item);
+  const types = identifierTypesFor(item);
+
+  const identifiers: CustomerIdentifier[] = types.map((type, index) => {
+    const isWeak = weak.type === type;
+    const isOrigin = index === 0;
+    let value: string;
+    switch (type) {
+      case "email":
+        value = fullEmail(item.displayName ?? "anon user", item.maskedEmail);
+        break;
+      case "phone":
+        value = `+91 9${digits(rng, 4)} ${digits(rng, 5)}`;
+        break;
+      case "loyalty_id":
+        value = `LYL-${digits(rng, 5)}`;
+        break;
+      case "device_id":
+        value = `dev_${id.slice(5)}_${digits(rng, 3)}`;
+        break;
+      case "name":
+        value = item.displayName ?? "Unknown";
+        break;
+      default:
+        value = `ck_${id.slice(5)}_${digits(rng, 4)}`;
+    }
+
+    let linkMethod: LinkMethod;
+    let linkConfidence: number;
+    if (isWeak) {
+      linkMethod = isOrigin ? "origin" : "probabilistic";
+      linkConfidence = item.identityConfidence;
+    } else if (isOrigin) {
+      linkMethod = "origin";
+      linkConfidence = 1.0;
+    } else if (type === "name") {
+      linkMethod = "probabilistic";
+      linkConfidence = 1.0;
+    } else {
+      linkMethod = "deterministic";
+      linkConfidence = 1.0;
+    }
+
+    return {
+      type,
+      value,
+      sourceChannel: IDENTIFIER_CHANNEL[type],
+      linkMethod,
+      linkConfidence,
+      firstSeenIso: new Date(
+        firstSeen.getTime() + index * Math.floor(rng() * 3) * DAY,
+      ).toISOString(),
+    };
+  });
+
+  const identityConfidence = identifiers.reduce(
+    (min, i) => Math.min(min, i.linkConfidence),
+    1,
+  );
+
+  const repeatCount = item.patterns.includes("repeat_contact")
+    ? 2 + Math.floor(rng() * 2)
+    : 0;
+  const patternCounts: Record<CustomerPattern, number> = {
+    drop_off: item.patterns.includes("drop_off") ? 1 : 0,
+    escalation: item.patterns.includes("escalation") ? 1 : 0,
+    repeat_contact: repeatCount,
+    unresolved_issue: item.patterns.includes("unresolved_issue") ? 1 : 0,
+  };
+
+  const hasConflict = !item.isAnonymous && idSeed(id) % 97 === 0;
+
+  return {
+    id: item.id,
+    displayName: item.displayName,
+    isAnonymous: item.isAnonymous,
+    channels: item.channels,
+    eventCount: item.eventCount,
+    firstSeenIso: firstSeen.toISOString(),
+    lastSeenIso: lastSeen.toISOString(),
+    activeDurationDays,
+    silenceDays,
+    identityConfidence,
+    weakestLink: { confidence: identityConfidence, explanation: weak.explanation },
+    identifiers,
+    hasConflict,
+    churnRisk: item.churnRisk,
+    churnSignals: churnSignalsFor(item, silenceDays, repeatCount),
+    patternCounts,
     asOfIso: asOf.toISOString(),
   };
 }

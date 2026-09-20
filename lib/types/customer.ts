@@ -48,3 +48,58 @@ export interface CustomerListResult {
   pageSize: number;
   asOfIso: string;
 }
+
+/* ------------------------------------------------------------------ *
+ * Customer detail (S-03). On the detail screen identifier values are
+ * shown in FULL (SoT D-12) — masking applies only to lists/search/logs.
+ * ------------------------------------------------------------------ */
+
+export type IdentifierType =
+  | "email"
+  | "phone"
+  | "loyalty_id"
+  | "device_id"
+  | "cookie_id"
+  | "name";
+
+export type LinkMethod =
+  | "origin"
+  | "deterministic"
+  | "probabilistic"
+  | "conflict";
+
+export interface CustomerIdentifier {
+  type: IdentifierType;
+  /** Full, unmasked value — permitted on the detail screen (SoT D-12). */
+  value: string;
+  sourceChannel: Channel;
+  linkMethod: LinkMethod;
+  linkConfidence: number;
+  firstSeenIso: string;
+}
+
+export interface ChurnSignal {
+  rule: string;
+  evidence: string;
+}
+
+export interface CustomerDetail {
+  id: string;
+  displayName: string | null;
+  isAnonymous: boolean;
+  channels: Channel[];
+  eventCount: number;
+  firstSeenIso: string;
+  lastSeenIso: string;
+  activeDurationDays: number;
+  silenceDays: number;
+  /** Profile identity confidence = the weakest identifier link (SoT D-10). */
+  identityConfidence: number;
+  weakestLink: { confidence: number; explanation: string };
+  identifiers: CustomerIdentifier[];
+  hasConflict: boolean;
+  churnRisk: ChurnRisk;
+  churnSignals: ChurnSignal[];
+  patternCounts: Record<CustomerPattern, number>;
+  asOfIso: string;
+}
