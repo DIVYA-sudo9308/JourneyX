@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS, activeNavHref } from "@/lib/nav";
 import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoutButton } from "@/components/layout/logout-button";
 import {
   Tooltip,
   TooltipContent,
@@ -73,7 +74,8 @@ export function IconRail() {
         })}
       </ul>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <LogoutButton />
         <ThemeToggle />
       </div>
     </nav>

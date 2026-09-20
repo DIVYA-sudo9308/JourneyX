@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS, activeNavHref } from "@/lib/nav";
 import { BrandMark } from "./brand-mark";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/layout/logout-button";
 import {
   Sheet,
   SheetContent,
@@ -71,6 +72,10 @@ export function MobileNav() {
               );
             })}
           </ul>
+
+          <div className="mt-4 border-t border-border px-2 pt-4">
+            <LogoutButton />
+          </div>
         </nav>
       </SheetContent>
     </Sheet>
