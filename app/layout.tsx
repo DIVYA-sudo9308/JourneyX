@@ -5,8 +5,7 @@ import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
-import { IconRail } from "@/components/layout/icon-rail";
-import { TopBar } from "@/components/layout/top-bar";
+import { AppShell } from "@/components/layout/app-shell";
 
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
@@ -48,13 +47,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <Providers>
-          <div className="flex min-h-dvh">
-            <IconRail />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <TopBar />
-              <main className="flex-1">{children}</main>
-            </div>
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

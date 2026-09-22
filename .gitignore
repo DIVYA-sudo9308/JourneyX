@@ -36,3 +36,6 @@ yarn-error.log*
 !.vscode/extensions.json
 .idea
 Thumbs.db
+# env files
+.env*
+!.env.example
