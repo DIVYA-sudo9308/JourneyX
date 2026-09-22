@@ -10,7 +10,7 @@ import type { InsightCard as InsightCardData } from "@/lib/types/analytics";
  * real people.
  */
 export function InsightCard({ insight }: { insight: InsightCardData }) {
-  const liftText = `${insight.lift.toFixed(1)}×`;
+  const liftText = insight.lift === null ? null : `${insight.lift.toFixed(1)}×`;
 
   return (
     <section className="rounded-md border border-border bg-surface p-5">
@@ -38,7 +38,7 @@ export function InsightCard({ insight }: { insight: InsightCardData }) {
           {Math.round(insight.churnRateBaseline * 100)}%
         </span>{" "}
         baseline —{" "}
-        <span className="font-mono font-semibold">{liftText}</span> the risk.
+        {liftText ? <><span className="font-mono font-semibold">{liftText}</span> the risk.</> : "risk multiplier unavailable."}
       </p>
 
       <p className="mt-2 text-xs text-text-muted">Synthetic data.</p>

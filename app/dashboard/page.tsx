@@ -49,7 +49,7 @@ export default async function DashboardPage({
         )}, synthetic data`}
       />
 
-      <FilterBar />
+      <FilterBar asOfIso={summary.asOfIso} />
 
       {isEmpty ? (
         <EmptyState

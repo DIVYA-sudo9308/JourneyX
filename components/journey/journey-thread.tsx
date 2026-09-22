@@ -46,6 +46,9 @@ export function JourneyThread({
     <ol className="flex flex-col">
       {events.map((event, i) => {
         const prev = i > 0 ? events[i - 1] : null;
+        const visibleGapMinutes = prev
+          ? (Date.parse(event.timestampIso) - Date.parse(prev.timestampIso)) / 60_000
+          : 0;
         const journeyBoundary = prev !== null && event.journeyIndex !== prev.journeyIndex;
         const sessionBoundary =
           prev !== null &&
@@ -62,7 +65,7 @@ export function JourneyThread({
         return (
           <li key={event.id}>
             {journeyBoundary ? (
-              <JourneyBoundary gapMinutes={event.gapMinutes} />
+              <JourneyBoundary gapMinutes={visibleGapMinutes} />
             ) : null}
             <div className="flex gap-3">
               <div className="flex flex-col items-center">
@@ -74,7 +77,7 @@ export function JourneyThread({
                   <TransitionConnector from={prev.channel} to={event.channel} />
                 ) : null}
                 {sessionBoundary ? (
-                  <SessionBoundary gapMinutes={event.gapMinutes} />
+                  <SessionBoundary gapMinutes={visibleGapMinutes} />
                 ) : null}
                 <EventCard
                   event={event}

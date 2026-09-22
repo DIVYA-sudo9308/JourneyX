@@ -49,7 +49,7 @@ export interface ChurnCorrelationRow {
   patternLabel: string;
   churnRateWith: number;
   churnRateWithout: number;
-  lift: number;
+  lift: number | null;
   n: number;
   href: string;
 }
@@ -60,7 +60,7 @@ export interface InsightCard {
   affectedCount: number;
   churnRateAffected: number;
   churnRateBaseline: number;
-  lift: number;
+  lift: number | null;
   ctaHref: string;
 }
 

@@ -180,7 +180,7 @@ begin
     'customers','customer_identifiers','events','journeys',
     'patterns','churn_signals','identity_links'
   ] loop
-    execute format('drop policy if exists %I_read on public.%I', t || '_read', t);
+    execute format('drop policy if exists %I on public.%I', t || '_read', t);
     execute format(
       'create policy %I on public.%I for select to anon, authenticated using (true)',
       t || '_read', t

@@ -1,5 +1,6 @@
 import { cache } from "react";
 
+import { buildJourneyEvents } from "@/lib/journey/build";
 import { asOf } from "@/lib/shared/clock";
 import {
   CHANNELS,
@@ -16,23 +17,12 @@ import type {
   CustomerListResult,
   CustomerPattern,
   ChurnSignal,
-  JourneyEvent,
   LinkMethod,
 } from "@/lib/types/customer";
 import { getServerSupabase } from "@/lib/supabase/server";
 
-export class QueryError extends Error {
-  supabaseCode?: string;
-  supabaseHint?: string;
-  supabaseDetails?: string;
-  constructor(message: string, opts?: { code?: string; hint?: string; details?: string }) {
-    super(message);
-    this.name = "QueryError";
-    this.supabaseCode = opts?.code;
-    this.supabaseHint = opts?.hint;
-    this.supabaseDetails = opts?.details;
-  }
-}
+import { QueryError, raise, readAll, dateRange } from "./shared";
+export { QueryError } from "./shared";
 
 const LIST_PATTERNS: CustomerPattern[] = [
   "drop_off",
@@ -43,28 +33,6 @@ const LIST_PATTERNS: CustomerPattern[] = [
 const SORT_KEYS: CustomerSortKey[] = ["lastActive", "eventCount", "churnRisk"];
 
 type CustomerSortKey = NonNullable<CustomerListFilters["sortBy"]>;
-
-interface SupabaseErrorLike {
-  message?: string;
-  code?: string;
-  hint?: string;
-  details?: string;
-}
-
-function raise(scope: string, error: SupabaseErrorLike): never {
-  const msg = error?.message || "Unknown Supabase error";
-  console.error(`[query:${scope}]`, {
-    message: msg,
-    code: error?.code,
-    hint: error?.hint,
-    details: error?.details,
-  });
-  throw new QueryError(`${scope}: ${msg}`, {
-    code: error?.code,
-    hint: error?.hint,
-    details: error?.details,
-  });
-}
 
 function client() {
   const supabase = getServerSupabase();
@@ -99,12 +67,8 @@ function normalizeFilters(filters: CustomerListFilters) {
       ? Math.min(1, Math.max(0, filters.minConfidence))
       : undefined;
 
-  if (filters.dateFrom && filters.dateTo) {
-    if (new Date(filters.dateFrom) > new Date(filters.dateTo)) {
-      throw new QueryError('"dateFrom" must not be after "dateTo".');
-    }
-  }
-  return { patterns, channels, churnRisk, sortBy, sortOrder, minConfidence };
+  const dates = dateRange(filters.dateFrom, filters.dateTo);
+  return { patterns, channels, churnRisk, sortBy, sortOrder, minConfidence, ...dates };
 }
 
 interface CustomerRow {
@@ -158,8 +122,9 @@ export async function getCustomers(
   const norm = normalizeFilters(filters);
   const supabase = client();
 
-  const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.max(1, Math.min(200, filters.pageSize ?? 25));
+  const page = Number.isFinite(filters.page) ? Math.max(1, Math.floor(filters.page!)) : 1;
+  const pageSize = Number.isFinite(filters.pageSize)
+    ? Math.max(1, Math.min(200, Math.floor(filters.pageSize!))) : 25;
 
   const totalUnfilteredRes = await supabase
     .from("customers")
@@ -180,10 +145,8 @@ export async function getCustomers(
   if (norm.minConfidence !== undefined) {
     q = q.gte("identity_confidence", norm.minConfidence);
   }
-  if (filters.dateFrom) q = q.gte("last_active_at", filters.dateFrom);
-  if (filters.dateTo) {
-    q = q.lte("last_active_at", `${filters.dateTo}T23:59:59.999Z`);
-  }
+  if (norm.fromIso) q = q.gte("last_active_at", norm.fromIso);
+  if (norm.untilIso) q = q.lt("last_active_at", norm.untilIso);
 
   if (norm.patterns && norm.patterns.length > 0) {
     q = q.or(jsonbOverlapOr("patterns", norm.patterns));
@@ -358,7 +321,6 @@ export const getCustomer = cache(
         Math.floor((lastSeen.getTime() - firstSeen.getTime()) / 86_400_000),
       );
     const silenceDays =
-      customer.metadata?.silenceDays ??
       Math.max(
         0,
         Math.floor((asOfDate.getTime() - lastSeen.getTime()) / 86_400_000),
@@ -397,62 +359,15 @@ export const getCustomerJourney = cache(
     const customer = await getCustomer(id);
     if (!customer) return null;
 
-    const { data, error } = await supabase
+    const data = await readAll("journey.events", (from, to) => supabase
       .from("events")
       .select("id, channel, event_type, timestamp, metadata")
       .eq("customer_id", id)
-      .order("timestamp", { ascending: true });
-    if (error) raise("journey.events", error);
+      .order("timestamp", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to));
 
-    const events: JourneyEvent[] = [];
-    let sessionIndex = -1;
-    let journeyIndex = -1;
-    let prevTime: number | null = null;
-    let prevChannel: Channel | null = null;
-
-    for (const row of data ?? []) {
-      const meta = (row.metadata ?? {}) as Partial<
-        Pick<
-          JourneyEvent,
-          "summary" | "metadata" | "resolution" | "patterns" | "eventCategory"
-        >
-      >;
-      const ts = new Date(row.timestamp as string).getTime();
-      const gapMinutes = prevTime === null ? 0 : Math.round((ts - prevTime) / 60_000);
-      const isJourneyStart = prevTime === null || gapMinutes > 24 * 60;
-      const isTransition =
-        prevChannel !== null && (row.channel as Channel) !== prevChannel;
-      const isSessionStart = prevTime === null || gapMinutes > 30 || isTransition;
-      if (isJourneyStart) journeyIndex += 1;
-      if (isSessionStart) sessionIndex += 1;
-
-      events.push({
-        id: row.id as string,
-        timestampIso: new Date(ts).toISOString(),
-        channel: row.channel as Channel,
-        eventType: row.event_type as string,
-        eventCategory: meta.eventCategory ?? "unknown",
-        summary: meta.summary ?? String(row.event_type).replace(/_/g, " "),
-        metadata: meta.metadata ?? [],
-        resolution:
-          meta.resolution ?? {
-            method: "deterministic",
-            confidence: 1,
-            evidence: ["Linked via an existing identifier"],
-          },
-        sessionIndex,
-        journeyIndex,
-        isSessionStart,
-        isJourneyStart,
-        isTransition,
-        transitionFrom: isTransition ? prevChannel : null,
-        gapMinutes,
-        patterns: meta.patterns ?? [],
-      });
-
-      prevTime = ts;
-      prevChannel = row.channel as Channel;
-    }
+    const events = buildJourneyEvents(data);
 
     return {
       id: customer.id,
@@ -461,8 +376,8 @@ export const getCustomerJourney = cache(
       events,
       channels: customer.channels,
       totalEvents: events.length,
-      journeyCount: journeyIndex + 1,
-      sessionCount: sessionIndex + 1,
+      journeyCount: (events.at(-1)?.journeyIndex ?? -1) + 1,
+      sessionCount: (events.at(-1)?.sessionIndex ?? -1) + 1,
       silenceDays: customer.silenceDays,
       churnRisk: customer.churnRisk,
       asOfIso: asOf().toISOString(),

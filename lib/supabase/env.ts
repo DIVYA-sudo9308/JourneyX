@@ -1,7 +1,6 @@
 /**
- * Supabase environment accessors. Kept in one place so the query layer can
- * probe `hasSupabase()` and cleanly fall back to the mock fixture when the
- * project has not been configured yet.
+ * Supabase environment accessors. Missing configuration is reported by the
+ * query layer; mock fixtures are reserved for seeding.
  */
 
 export function supabaseUrl(): string | undefined {

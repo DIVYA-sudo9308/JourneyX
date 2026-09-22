@@ -8,8 +8,8 @@ Hackathon-MVP backend. Project ref: `xmbfocscluhndxyodrwa`.
    `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` (Supabase Studio →
    Project Settings → API).
 2. Apply the schema. Either:
-   - **Studio**: paste `supabase/migrations/0001_init.sql` into the SQL Editor
-     and Run, or
+   - **Studio**: run `supabase/migrations/0001_init.sql`, then
+     `supabase/migrations/0002_grants.sql` in the SQL Editor, or
    - **CLI**: `supabase link --project-ref xmbfocscluhndxyodrwa` and
      `supabase db push`.
 3. Seed the deterministic dataset:
@@ -30,13 +30,21 @@ re-inserts.
 
 ## Query path
 
-Server components call `lib/queries/*` directly (SoT D-34). Those functions
-prefer Supabase whenever `SUPABASE_URL` + `SUPABASE_ANON_KEY` are set,
-otherwise they fall back to the deterministic mock fixture — so `npm run dev`
-never breaks in a fresh clone.
+Server components call `lib/queries/*` directly (SoT D-34). These queries require
+`SUPABASE_URL` and either a service-role key or an anon key. The server prefers
+the service-role key, falling back to the anon key. Keys stay on the server.
+Missing configuration displays the route error boundary; mock fixtures are used
+by the seed script, not as an automatic query fallback.
+
+Dashboard date/channel filters select customers with matching events. Pattern
+metrics additionally use the detection date and pattern channel (either end for
+escalations). Churn is the selected customers' current risk. Without filters,
+all profiles are included. Repeat-contact rate counts distinct affected customers;
+friction ranking also counts distinct customers, while pattern KPIs count occurrences.
+Queries paginate aggregate inputs and journey events to avoid PostgREST row caps.
 
 ## RLS
 
 All tables enable RLS. The migration grants `SELECT` to `anon` +
-`authenticated`. Writes require the service role key, which is only used by
-`scripts/seed.ts` (server-side).
+`authenticated`. Writes require the service role key, which is used by
+`scripts/seed.ts` and optionally by the server query layer.

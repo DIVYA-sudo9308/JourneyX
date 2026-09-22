@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
     "seed": "tsx scripts/seed.ts",
-    "db:apply": "echo 'Run supabase/migrations/0001_init.sql in Supabase Studio, or `supabase db push` after `supabase login`.'"
+    "db:apply": "echo 'Run supabase/migrations/0001_init.sql then 0002_grants.sql in Supabase Studio, or `supabase db push` after `supabase login`.'"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.11",

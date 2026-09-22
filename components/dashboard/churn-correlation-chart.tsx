@@ -95,7 +95,7 @@ function CorrelationTooltip({
 }: ChartTooltipContentProps) {
   if (!active || !payload || payload.length === 0) return null;
   const row = payload[0]?.payload as
-    | { lift: number; n: number; withPattern: number; withoutPattern: number }
+    | { lift: number | null; n: number; withPattern: number; withoutPattern: number }
     | undefined;
   if (!row) return null;
 
@@ -106,7 +106,7 @@ function CorrelationTooltip({
         With: {row.withPattern}% · Baseline: {row.withoutPattern}%
       </p>
       <p className="font-mono tabular-nums text-white/90">
-        Lift {row.lift.toFixed(1)}× · n={row.n}
+        Lift {row.lift === null ? "N/A" : `${row.lift.toFixed(1)}×`} · n={row.n}
       </p>
     </div>
   );

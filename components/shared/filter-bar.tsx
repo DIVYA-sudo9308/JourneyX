@@ -19,10 +19,9 @@ function presetRange(preset: Exclude<Preset, "custom" | "all">, today: Date) {
   return { dateFrom: isoDate(from), dateTo: isoDate(today) };
 }
 
-function detectPreset(dateFrom: string | null, dateTo: string | null): Preset {
+function detectPreset(dateFrom: string | null, dateTo: string | null, today: Date): Preset {
   if (!dateFrom && !dateTo) return "all";
   if (!dateFrom || !dateTo) return "custom";
-  const today = new Date();
   for (const p of ["7d", "30d", "90d"] as const) {
     const range = presetRange(p, today);
     if (range.dateFrom === dateFrom && range.dateTo === dateTo) return p;
@@ -36,7 +35,7 @@ function detectPreset(dateFrom: string | null, dateTo: string | null): Preset {
  * filtered view is shareable and back-button-safe; the server component
  * re-fetches on navigation.
  */
-export function FilterBar() {
+export function FilterBar({ asOfIso }: { asOfIso: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -48,7 +47,9 @@ export function FilterBar() {
     () => (channelParam ? (channelParam.split(",") as Channel[]) : []),
     [channelParam],
   );
-  const preset = detectPreset(dateFrom, dateTo);
+  const [customRange, setCustomRange] = React.useState(false);
+  const today = new Date(asOfIso);
+  const preset = customRange ? "custom" : detectPreset(dateFrom, dateTo, today);
 
   function applyParams(next: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -60,10 +61,11 @@ export function FilterBar() {
   }
 
   function onPresetChange(value: Preset) {
+    setCustomRange(value === "custom");
     if (value === "all") {
       applyParams({ dateFrom: null, dateTo: null });
     } else if (value !== "custom") {
-      const range = presetRange(value, new Date());
+      const range = presetRange(value, today);
       applyParams({ dateFrom: range.dateFrom, dateTo: range.dateTo });
     }
     // "custom" leaves current values in place and reveals the date inputs.
@@ -104,6 +106,7 @@ export function FilterBar() {
               id="dashboard-date-from"
               type="date"
               value={dateFrom ?? ""}
+              max={dateTo ?? undefined}
               onChange={(e) => applyParams({ dateFrom: e.target.value || null })}
               className="h-9 rounded-sm border border-input bg-surface px-3 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -117,6 +120,7 @@ export function FilterBar() {
               id="dashboard-date-to"
               type="date"
               value={dateTo ?? ""}
+              min={dateFrom ?? undefined}
               onChange={(e) => applyParams({ dateTo: e.target.value || null })}
               className="h-9 rounded-sm border border-input bg-surface px-3 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />

@@ -13,10 +13,12 @@ The immutable sources of truth are in [`docs/`](docs/) and the brand system in
 
 ## Status
 
-**Milestone 1 — Application foundation & shell.** Business screens
-(Dashboard, Customers, Journey, Identity, Analytics, Search, Notifications)
-are implemented in later milestones. The backend/API and database are separate
-milestones (see `docs/SOURCE_OF_TRUTH.md` §4).
+Dashboard, customer list/detail, and journey timeline screens read from Supabase.
+Identity, pipeline, global search, and notifications still contain milestone
+placeholders; ingestion and identity-resolution APIs are not implemented yet.
+
+See [`supabase/README.md`](supabase/README.md) to configure and seed the database.
+A fresh checkout needs Supabase credentials; there is no automatic mock fallback.
 
 ## Tech stack (resolved at Milestone 1, per SoT D-49)
 
@@ -50,7 +52,8 @@ Tailwind in [`tailwind.config.ts`](tailwind.config.ts). See
 ## Getting started
 
 ```bash
-npm install
+npm ci
+# Configure .env.local and apply migrations; see supabase/README.md
 npm run dev
 ```
 
@@ -64,7 +67,8 @@ Open http://localhost:3000 — the root redirects to `/dashboard`.
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config) |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typecheck` | Generate Next.js route types, then `tsc --noEmit` |
+| `npm test` | Regression tests for analytics, pagination, dates, and journey boundaries |
 
 ## Project structure
 
@@ -72,7 +76,7 @@ Open http://localhost:3000 — the root redirects to `/dashboard`.
 app/                     App Router routes + root shell
   layout.tsx             Shell: icon rail + top bar + theme init
   page.tsx               Redirect → /dashboard
-  dashboard|customers|pipeline/   route stubs (business screens land later)
+  dashboard|customers|pipeline/   business screens and pipeline placeholder
   globals.css            Design tokens (Convergent Thread) + base styles
 components/
   layout/                IconRail, TopBar, MobileNav, SearchTrigger,

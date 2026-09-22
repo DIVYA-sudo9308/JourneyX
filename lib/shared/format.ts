@@ -36,7 +36,7 @@ export function formatRelativeTime(iso: string, asOf: Date): string {
 
 /** Compact gap label between events, e.g. "45m", "3h", "2d". */
 export function formatGap(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${Math.round(minutes)}m`;
   const hours = Math.round(minutes / 60);
   if (hours < 48) return `${hours}h`;
   const days = Math.round(hours / 24);

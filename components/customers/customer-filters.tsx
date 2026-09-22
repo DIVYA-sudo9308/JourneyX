@@ -68,7 +68,10 @@ export function CustomerFilters() {
   const selectedChannels = csv("channel");
   const selectedChurn = csv("churnRisk");
 
-  const urlConfidence = Number(searchParams.get("minConfidence") ?? "0");
+  const rawConfidence = Number(searchParams.get("minConfidence") ?? "0");
+  const urlConfidence = Number.isFinite(rawConfidence)
+    ? Math.min(1, Math.max(0, rawConfidence)) : 0;
+  const idPrefix = React.useId();
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
 
@@ -78,7 +81,7 @@ export function CustomerFilters() {
         {PATTERNS.map((pattern) => (
           <CheckRow
             key={pattern}
-            id={`pattern-${pattern}`}
+            id={`${idPrefix}-pattern-${pattern}`}
             checked={selectedPatterns.includes(pattern)}
             onChange={() => toggleCsv("pattern", pattern)}
             label={PATTERN_LABEL[pattern]}
@@ -90,7 +93,7 @@ export function CustomerFilters() {
         {CHANNELS.map((channel) => (
           <CheckRow
             key={channel}
-            id={`channel-${channel}`}
+            id={`${idPrefix}-channel-${channel}`}
             checked={selectedChannels.includes(channel)}
             onChange={() => toggleCsv("channel", channel)}
             label={
@@ -107,7 +110,7 @@ export function CustomerFilters() {
         {CHURN_OPTIONS.map((option) => (
           <CheckRow
             key={option.value}
-            id={`churn-${option.value}`}
+            id={`${idPrefix}-churn-${option.value}`}
             checked={selectedChurn.includes(option.value)}
             onChange={() => toggleCsv("churnRisk", option.value)}
             label={option.label}
