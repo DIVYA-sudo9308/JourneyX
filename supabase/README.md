@@ -8,8 +8,9 @@ Hackathon-MVP backend. Project ref: `xmbfocscluhndxyodrwa`.
    `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` (Supabase Studio →
    Project Settings → API).
 2. Apply the migrations **in order**. Either:
-   - **Studio**: run `0001_init.sql`, `0002_grants.sql`, then
-     `0003_intelligence.sql` in the SQL Editor, or
+   - **Studio**: run `0001_init.sql`, `0002_grants.sql`,
+     `0003_intelligence.sql`, then `0004_security_hardening.sql` in the SQL
+     Editor, or
    - **CLI**: `supabase link --project-ref xmbfocscluhndxyodrwa` and
      `supabase db push`.
 3. Seed:
@@ -19,6 +20,22 @@ Hackathon-MVP backend. Project ref: `xmbfocscluhndxyodrwa`.
 
 `0003_intelligence.sql` adds the pipeline tables and columns. It is additive
 and idempotent, except that it drops three superseded tables — see below.
+
+`0004_security_hardening.sql` clears the Supabase Security Advisor warnings
+for database functions. It changes no tables, data or RLS policies, and is
+idempotent:
+
+- **`public.set_updated_at`** — pins `search_path = ''` ("Function Search Path
+  Mutable"). The function only calls `now()`, so the `updated_at` triggers
+  behave exactly as before.
+- **`public.rls_auto_enable()`** — revokes `EXECUTE` from `public`, `anon` and
+  `authenticated` ("Public / Signed-In Users Can Execute SECURITY DEFINER
+  Function"). This is Supabase's auto-RLS function behind the `ensure_rls`
+  event trigger; it is not created by these migrations and is skipped if
+  absent. The event trigger still fires — only the API endpoint goes away.
+
+The remaining advisor warning, **Leaked Password Protection Disabled**, is an
+Auth setting rather than SQL, and is only available on the Pro plan and above.
 
 ## Schema
 
