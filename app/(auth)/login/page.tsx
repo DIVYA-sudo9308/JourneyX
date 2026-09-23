@@ -9,6 +9,33 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Where to land after signing in. `proxy.ts` appends `?next=<path>` when it
+ * bounces an unauthenticated request, so returning the user to the page they
+ * asked for is just a matter of reading it back.
+ *
+ * The value is resolved with the browser's own URL parser and kept only when
+ * it stays on this origin. Prefix checks are not enough: under the WHATWG
+ * parser `/\evil.example` resolves to `http://evil.example`, so a
+ * `startsWith("//")` test alone still leaves an open redirect. Resolving the
+ * URL uses the same parser an attacker would rely on, so anything that would
+ * leave the origin — protocol-relative, backslash-prefixed, absolute, or a
+ * `javascript:` URI — is rejected.
+ */
+function redirectTarget(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next) return "/dashboard";
+  try {
+    const url = new URL(next, window.location.origin);
+    if (url.origin === window.location.origin) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // Unparseable `next` — fall through to the default.
+  }
+  return "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -34,7 +61,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(redirectTarget());
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");

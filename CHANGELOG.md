@@ -1,8 +1,59 @@
-# JourneyX — corrections, revision 1.1
+# Changelog
 
-Date: 2026-09-19
+## 2026-09-22 — Core intelligence pipeline
 
-These changes update the supplied requirements, examples, and design reference. Application implementation is still pending the implementation plan.
+The application moves from seeded presentation data to a working end-to-end
+system. An event posted to the API now actually changes what JourneyX shows.
+
+**Added**
+
+- Ingestion pipeline (`lib/pipeline/`): Zod validation, normalization
+  (email, E.164 phone, loyalty/customer IDs, UTC timestamps, event categories),
+  permanent `dedup_key` idempotency, orchestration with per-stage timings, and
+  a `PipelineStore` port with Supabase and in-memory adapters.
+- Identity resolution engine (`lib/identity/`): strong deterministic lookup,
+  candidate generation from exact device/cookie matches, a contradiction
+  filter, additive probabilistic scoring (device 0.60, cookie 0.30, session
+  continuity 0.50, name 0.20×JW, temporal proximity 0.10, capped at 0.94),
+  the 0.70 threshold with a 0.05 decision margin, identifier expansion, and
+  conflict handling that never merges profiles.
+- Detectors (`lib/patterns/`): checkout and onboarding drop-off, escalation,
+  repeat contact, unresolved issue, and rule-based churn (R1–R4).
+  Reconciliation re-evaluates a customer's whole history, so a finding that no
+  longer holds is withdrawn.
+- `resolution_logs`, `ingestion_log` and `notifications` tables; `dedup_key`,
+  `resolution_method`, `resolution_confidence`, `event_category`,
+  `identifiers`, `raw_data` on `events`; `link_method` / `link_confidence` on
+  `customer_identifiers`; `pattern_key`, `event_id`, `related_event_ids` on
+  `patterns`.
+- Thirteen API routes under `/api/v1`, including `POST /events` and
+  `POST /events/batch`.
+- Identity tab (S-05): source fragments, convergence graph and resolution
+  chain, all read from the database.
+- Pipeline health screen, live notification bell, and global customer search.
+- `npm run replay` for the live demo beat; engine test suite (47 tests)
+  including the documented "Frustrated Shopper" golden scenario.
+
+**Changed**
+
+- `scripts/seed.ts` no longer inserts fabricated patterns or resolution
+  evidence. It generates raw events and runs them through `processEvent`;
+  every conclusion in the database is pipeline output.
+- Analytics read `events.resolution_method` / `resolution_confidence` instead
+  of display metadata.
+- The journey read model is built from stored events, `resolution_logs` and
+  `patterns` rather than pre-rendered strings.
+
+**Removed**
+
+- `lib/mock/` fixtures, `TabPlaceholder`, `PagePlaceholder`.
+- `journeys`, `identity_links` and `churn_signals` tables (superseded).
+
+---
+
+## 2026-09-19 — corrections, revision 1.1
+
+These changes update the supplied requirements, examples, and design reference.
 
 ## Corrections
 

@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 
+// The root layout's template appends "· JourneyX", so this must carry the bare
+// screen name — "Sign in · JourneyX" here rendered as "… · JourneyX · JourneyX".
+// A template only reaches one level down, so it is restated for /signup.
 export const metadata: Metadata = {
-  title: "Sign in · JourneyX",
+  title: {
+    default: "Sign in",
+    template: "%s · JourneyX",
+  },
 };
 
 export default function AuthLayout({

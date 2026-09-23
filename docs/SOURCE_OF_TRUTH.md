@@ -673,6 +673,18 @@ journeyx/
 
 ### 4.3 Database (supersedes TRD §3.2 and DATA_MODEL §15)
 
+> **Implementation note (2026-09-22).** The schema below is implemented by
+> `supabase/migrations/0003_intelligence.sql`, which keeps the physical table
+> names introduced in `0001_init.sql` rather than renaming tables the whole
+> query and UI layer already reads: `customers` ≙ `customer_profiles`,
+> `patterns` ≙ `detected_patterns`, and `ingestion_log` as specified in D-22.
+> `customers.id` and `events.id` are `TEXT` (`cust_…`, `evt_…`) rather than
+> UUID; every other column, constraint and index is as written here. The
+> superseded `journeys`, `identity_links` and `churn_signals` tables are
+> dropped — journeys are computed at read time (§4.7), link provenance moved
+> onto `customer_identifiers`, and churn is a `churn_signal` pattern (§4.8).
+> See `supabase/README.md` for the full mapping.
+
 Seven tables. The changes from DATA_MODEL §15 are marked ★.
 
 ```sql

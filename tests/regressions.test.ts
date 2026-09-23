@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { dateRange, readAll, QueryError } from "../lib/queries/shared";
-import { buildJourneyEvents, type EventRow } from "../lib/journey/build";
+import { buildJourney } from "../lib/journey/build";
+import type { StoredEventRecord } from "../lib/pipeline/types";
+import type { Channel } from "../lib/types/domain";
 import { summarizeAnalytics, type AnalyticsData } from "../lib/analytics/summary";
 
 const now = "2026-09-20T12:00:00.000Z";
@@ -13,10 +15,10 @@ function dataset(): AnalyticsData {
       { id: "c", is_anonymous: true, churn_risk: "medium" },
     ],
     events: [
-      { id: "e1", customer_id: "a", channel: "web", timestamp: now, metadata: { resolution: { method: "origin", confidence: 0 } } },
-      { id: "e2", customer_id: "a", channel: "web", timestamp: now, metadata: { resolution: { method: "probabilistic", confidence: 0.8 } } },
-      { id: "e3", customer_id: "b", channel: "mobile", timestamp: "2026-08-01T00:00:00Z", metadata: { resolution: { method: "deterministic", confidence: 1 } } },
-      { id: "e4", customer_id: "c", channel: "chat", timestamp: now, metadata: null },
+      { id: "e1", customer_id: "a", channel: "web", timestamp: now, resolution_method: "new_profile", resolution_confidence: 0 },
+      { id: "e2", customer_id: "a", channel: "web", timestamp: now, resolution_method: "probabilistic", resolution_confidence: 0.8 },
+      { id: "e3", customer_id: "b", channel: "mobile", timestamp: "2026-08-01T00:00:00Z", resolution_method: "deterministic", resolution_confidence: 1 },
+      { id: "e4", customer_id: "c", channel: "chat", timestamp: now, resolution_method: null, resolution_confidence: null },
     ],
     identifiers: [
       { id: "i1", customer_id: "a", identifier_type: "email", identifier_value: "a@example.test" },
@@ -112,19 +114,28 @@ test("readAll rejects a later page error instead of silently returning partial r
     ? { data: [{ id: 1 }], error: null }
     : { data: null, error: { message: "failed", code: "TEST" } }), QueryError);
 });
-function event(id: string, seconds: number, channel: EventRow["channel"] = "web"): EventRow {
-  return { id, channel, event_type: "page_view", timestamp: new Date(Date.parse(now) + seconds * 1000).toISOString(), metadata: {} };
+function event(id: string, seconds: number, channel: Channel = "web"): StoredEventRecord {
+  return {
+    id, channel, eventType: "page_view", eventCategory: "browse", customerId: "a",
+    timestampIso: new Date(Date.parse(now) + seconds * 1000).toISOString(),
+    metadata: {}, identifiers: {}, resolutionMethod: "deterministic", resolutionConfidence: 1,
+  };
+}
+const asOfDate = new Date(now);
+/** The timeline read model under test; patterns and resolutions are separate. */
+function journey(events: StoredEventRecord[]) {
+  return buildJourney(events, [], [], asOfDate);
 }
 test("session splits immediately above 30 minutes, but not at exactly 30 minutes", () => {
-  const events = buildJourneyEvents([event("1", 0), event("2", 1800), event("3", 3601)]);
-  assert.deepEqual(events.map((e) => e.sessionIndex), [0, 0, 1]);
+  const events = journey([event("1", 0), event("2", 1800), event("3", 3601)]);
+  assert.deepEqual(events.map((e: { sessionIndex: number }) => e.sessionIndex), [0, 0, 1]);
 });
 test("journey splits immediately above 24 hours, but not at exactly 24 hours", () => {
-  const events = buildJourneyEvents([event("1", 0), event("2", 86400), event("3", 172801)]);
-  assert.deepEqual(events.map((e) => e.journeyIndex), [0, 0, 1]);
+  const events = journey([event("1", 0), event("2", 86400), event("3", 172801)]);
+  assert.deepEqual(events.map((e: { journeyIndex: number }) => e.journeyIndex), [0, 0, 1]);
 });
 test("channel changes start a session within the same journey", () => {
-  const events = buildJourneyEvents([event("1", 0), event("2", 1, "mobile")]);
+  const events = journey([event("1", 0), event("2", 1, "mobile")]);
   assert.equal(events[1].sessionIndex, 1);
   assert.equal(events[1].journeyIndex, 0);
   assert.equal(events[1].transitionFrom, "web");

@@ -2,7 +2,7 @@
  * Client-side API fetcher for SWR (Design System / SoT §4.1: only the search
  * dropdown and notification bell fetch on the client; everything else is
  * server-rendered from URL params). Server Components read `lib/queries/*`
- * directly in later milestones — they do not use this fetcher.
+ * directly and do not use this fetcher.
  */
 
 export const API_BASE_URL =

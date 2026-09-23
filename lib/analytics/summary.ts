@@ -12,7 +12,9 @@ export interface AnalyticsEvent {
   customer_id: string;
   channel: Channel;
   timestamp: string;
-  metadata: { resolution?: { method: string; confidence: number } } | null;
+  /** Written by the resolver on every event (SoT §4.3). */
+  resolution_method: string | null;
+  resolution_confidence: number | string | null;
 }
 export interface AnalyticsPattern {
   id: string;
@@ -75,10 +77,13 @@ export function summarizeAnalytics(data: AnalyticsData, filters: DashboardFilter
   const medium = customers.filter((c) => c.churn_risk === "medium").length;
   const identifiers = new Set(data.identifiers.filter((i) => knownIds.has(i.customer_id))
     .map((i) => JSON.stringify([i.customer_id, i.identifier_type, i.identifier_value])));
+  // Link confidence excludes new profiles: nothing was matched, so there is
+  // no match confidence to average (SoT §4.9).
   const confidences = events.flatMap((e) => {
-    const r = e.metadata?.resolution;
-    return r && r.method !== "origin" && r.method !== "new_profile" &&
-      Number.isFinite(r.confidence) ? [Number(r.confidence)] : [];
+    const method = e.resolution_method;
+    const confidence = Number(e.resolution_confidence);
+    return method && method !== "origin" && method !== "new_profile" &&
+      Number.isFinite(confidence) ? [confidence] : [];
   });
   const average = confidences.length ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
   const count = (type: string) => patterns.filter((p) => p.pattern_type === type).length;

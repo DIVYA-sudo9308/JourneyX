@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +38,7 @@ export default function SignupPage() {
 
     try {
       const supabase = getBrowserSupabase();
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -47,6 +48,16 @@ export default function SignupPage() {
 
       if (authError) {
         setError(authError.message);
+        return;
+      }
+
+      // With email confirmation enabled, signUp returns a user but no session.
+      // Pushing to /dashboard then would bounce straight back off `proxy.ts`
+      // with nothing on screen to explain why, so say what has to happen next.
+      if (!data.session) {
+        setNotice(
+          "Account created. Check your inbox for the confirmation link, then sign in.",
+        );
         return;
       }
 
@@ -75,6 +86,15 @@ export default function SignupPage() {
         {error && (
           <div className="rounded-sm border border-danger-tint bg-danger-tint/40 px-3 py-2 text-sm text-danger">
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div
+            role="status"
+            className="rounded-sm border border-border bg-surface-alt px-3 py-2 text-sm text-foreground"
+          >
+            {notice}
           </div>
         )}
 

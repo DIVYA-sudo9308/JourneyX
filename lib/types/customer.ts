@@ -171,3 +171,96 @@ export interface CustomerJourney {
   churnRisk: ChurnRisk;
   asOfIso: string;
 }
+
+/* ------------------------------------------------------------------ *
+ * Identity graph (S-05). Built entirely from `customer_identifiers`
+ * and `resolution_logs` — every edge shown is a decision the engine
+ * actually made, with the evidence it made it on.
+ * ------------------------------------------------------------------ */
+
+/** A source system's isolated view of the customer, before unification. */
+export interface IdentityFragment {
+  /** The channel system that holds this fragment. */
+  channel: Channel;
+  /** The identifier that system knows them by. */
+  identifierType: IdentifierType;
+  value: string;
+  maskedValue: string;
+  eventCount: number;
+  firstSeenIso: string;
+  lastSeenIso: string;
+}
+
+/** One identifier linked to the unified customer, with its provenance. */
+export interface IdentityNode {
+  id: string;
+  type: IdentifierType;
+  value: string;
+  sourceChannel: Channel;
+  linkMethod: LinkMethod;
+  linkConfidence: number;
+  firstSeenIso: string;
+  lastSeenIso: string;
+  /** Why the engine attached this identifier — verbatim resolution evidence. */
+  evidence: string[];
+  linkedByEventId: string | null;
+  linkedByEventType: string | null;
+}
+
+/** One resolution decision, in the order the events arrived. */
+export interface ResolutionChainStep {
+  eventId: string;
+  timestampIso: string;
+  channel: Channel;
+  eventType: string;
+  method: LinkMethod;
+  confidence: number;
+  evidence: string[];
+  identifiersAdded: { type: IdentifierType; maskedValue: string }[];
+  ambiguous: boolean;
+  conflict: boolean;
+}
+
+export interface IdentityConflictSummary {
+  eventId: string;
+  detectedAtIso: string;
+  competingProfileIds: string[];
+  identifiers: { customerId: string; type: IdentifierType; maskedValue: string }[];
+}
+
+export interface IdentityGraph {
+  customerId: string;
+  displayName: string | null;
+  isAnonymous: boolean;
+  identityConfidence: number;
+  weakestLink: { confidence: number; explanation: string };
+  nodes: IdentityNode[];
+  fragments: IdentityFragment[];
+  chain: ResolutionChainStep[];
+  conflicts: IdentityConflictSummary[];
+  methodCounts: Record<LinkMethod, number>;
+  totalEvents: number;
+  asOfIso: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer search (S-09)
+ * ------------------------------------------------------------------ */
+
+export interface CustomerSearchHit {
+  id: string;
+  displayName: string | null;
+  /** The identifier the query matched, masked. */
+  matchedOn: { type: IdentifierType; maskedValue: string } | null;
+  identifierCount: number;
+  eventCount: number;
+  channels: Channel[];
+  churnRisk: ChurnRisk;
+  lastActiveIso: string | null;
+}
+
+export interface CustomerSearchResult {
+  query: string;
+  hits: CustomerSearchHit[];
+  total: number;
+}

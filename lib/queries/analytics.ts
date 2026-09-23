@@ -18,7 +18,8 @@ export async function getAnalyticsSummary(filters: DashboardFilters): Promise<An
     readAll<AnalyticsCustomer>("analytics.customers", (from, to) => supabase.from("customers")
       .select("id, is_anonymous, churn_risk").order("id").range(from, to)),
     readAll<AnalyticsEvent>("analytics.events", (from, to) => {
-      let q = supabase.from("events").select("id, customer_id, channel, timestamp, metadata").order("id");
+      let q = supabase.from("events")
+        .select("id, customer_id, channel, timestamp, resolution_method, resolution_confidence").order("id");
       if (fromIso) q = q.gte("timestamp", fromIso);
       if (untilIso) q = q.lt("timestamp", untilIso);
       if (filters.channel?.length) q = q.in("channel", filters.channel);
