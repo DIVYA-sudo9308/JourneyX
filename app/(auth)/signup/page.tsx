@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
+import { authConfirmUrl } from "@/lib/auth/site-url";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export default function SignupPage() {
         password,
         options: {
           data: { full_name: name },
+          // Without this Supabase falls back to the dashboard Site URL.
+          emailRedirectTo: authConfirmUrl(),
         },
       });
 
@@ -56,7 +59,7 @@ export default function SignupPage() {
       // with nothing on screen to explain why, so say what has to happen next.
       if (!data.session) {
         setNotice(
-          "Account created. Check your inbox for the confirmation link, then sign in.",
+          "Account created. Open the confirmation link we emailed you — it signs you in.",
         );
         return;
       }

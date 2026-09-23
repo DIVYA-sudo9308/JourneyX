@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -36,6 +36,42 @@ function redirectTarget(): string {
   return "/dashboard";
 }
 
+/**
+ * Fixed messages for `?notice=` set by `/auth/confirm`. Only known codes are
+ * shown, so the query string cannot put arbitrary text on the sign-in page.
+ */
+const NOTICES: Record<string, string> = {
+  confirm_elsewhere:
+    "Your email is confirmed. Sign in to continue.",
+  link_invalid:
+    "That link is invalid or has expired. Sign in, or sign up again to get a new confirmation email.",
+};
+
+/**
+ * Supabase answers an unconfirmed account with `email_not_confirmed`, never
+ * with `invalid_credentials` — that one always means the email/password pair
+ * does not match. Saying which keeps the two failures from looking alike.
+ */
+const SIGN_IN_ERRORS: Record<string, string> = {
+  email_not_confirmed:
+    "Confirm your email first — open the link we sent you, then sign in.",
+  invalid_credentials:
+    "Email or password is incorrect. Check that your browser didn't autofill a different saved password.",
+};
+
+function AuthNotice() {
+  const notice = NOTICES[useSearchParams().get("notice") ?? ""];
+  if (!notice) return null;
+  return (
+    <div
+      role="status"
+      className="rounded-sm border border-border bg-surface-alt px-3 py-2 text-sm text-foreground"
+    >
+      {notice}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -57,7 +93,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message);
+        setError(SIGN_IN_ERRORS[authError.code ?? ""] ?? authError.message);
         return;
       }
 
@@ -83,6 +119,10 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Suspense fallback={null}>
+          <AuthNotice />
+        </Suspense>
+
         {error && (
           <div className="rounded-sm border border-danger-tint bg-danger-tint/40 px-3 py-2 text-sm text-danger">
             {error}
